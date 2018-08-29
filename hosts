@@ -1,0 +1,40 @@
+[localhosts]
+localhost       ansible_connection=local ansible_become_pass=VMware1!
+
+[jumphost]
+ux-jumphost 		ansible_ssh_host=192.168.110.11		ansible_ssh_user=localadmin ansible_ssh_pass=VMware1!
+
+[managers]
+nsx-manager 		ansible_ssh_host=192.168.110.19		ansible_ssh_user=root ansible_ssh_pass=VMware1!
+
+[vcenters]
+vcsa01  		ansible_ssh_host=192.168.110.15		ansible_ssh_user=root ansible_ssh_pass=VMware1!
+
+[controllers]
+nsx-controller01	ansible_ssh_host=192.168.110.16		ansible_ssh_user=root ansible_ssh_pass=VMware1!
+# nsx-controller02	ansible_ssh_host=192.168.110.17		ansible_ssh_user=root ansible_ssh_pass=VMware1!
+# nsx-controller03	ansible_ssh_host=192.168.110.18		ansible_ssh_user=root ansible_ssh_pass=VMware1!
+
+[edges]
+edge01			ansible_ssh_host=192.168.110.57		ansible_ssh_user=root ansible_ssh_pass=VMware1!
+edge02			ansible_ssh_host=192.168.110.58		ansible_ssh_user=root ansible_ssh_pass=VMware1!
+#edge03			ansible_ssh_host=192.168.110.62		ansible_ssh_user=root ansible_ssh_pass=VMware1!
+
+[esxi-hosts]
+esx-01                  ansible_ssh_host=192.168.110.53        ansible_ssh_user=root ansible_ssh_pass=VMware1!
+esx-02                  ansible_ssh_host=192.168.110.54        ansible_ssh_user=root ansible_ssh_pass=VMware1!
+
+[kvm-hosts]
+kvm-01                  ansible_ssh_host=192.168.110.55        ansible_ssh_user=vmware ansible_ssh_pass=VMware1! ansible_become_pass=VMware1!
+kvm-02                  ansible_ssh_host=192.168.110.56        ansible_ssh_user=vmware ansible_ssh_pass=VMware1! ansible_become_pass=VMware1!
+
+[vpod-infra]
+vpod-router             ansible_ssh_host=192.168.110.1         ansible_ssh_user=root ansible_ssh_pass=VMware1!
+
+[nsx-appliances:children]
+managers
+controllers
+edges
+
+[all:vars]
+ansible_ssh_common_args='-o StrictHostKeyChecking=no'

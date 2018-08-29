@@ -1,0 +1,226 @@
+---
+#
+ova_folder: "/home/localadmin/OVAs/"
+# 
+# Build numbers
+#
+release_build: 8680772
+manager_ova_name: nsx-unified-appliance
+manager_ova_build: 2.2.0.0.0.8680778
+controller_ova_name: nsx-controller
+controller_ova_build: 2.2.0.0.0.8680774
+edge_ova_name: nsx-edge
+edge_ova_build: 2.2.0.0.0.8680783
+ubuntu_lcp_build: 2.2.0.0.0.8680789
+#
+# vCenter details
+#
+vcsa01_ip: 192.168.110.15
+vcsa01_admin: administrator@corp.local
+vcsa01_pwd: VMware1!
+vcsa01_hostname: vcsa01
+compA_moref_id: domain-c19
+mgmt_host01_ip: 192.168.110.51
+mgmt_host02_ip: 192.168.110.52
+#
+# mgmt01: 192.168.110.51
+# mgmt02: 192.168.110.52
+#
+#
+# NSX appliances details
+#
+nsx_manager_vm_name: nsxmanager01
+nsx_manager_hostname: nsxmanager01
+nsx_manager_ip: 192.168.110.19
+nsx_controller_vm_name: nsxcontroller01
+nsx_controller_hostname: nsxcontroller01
+nsx_controller_ip: 192.168.110.16
+nsx_edge01_vm_name: nsxedge01
+nsx_edge01_hostname: nsxedge01
+nsx_edge01_ip: 192.168.110.57
+nsx_edge02_vm_name: nsxedge02
+nsx_edge02_hostname: nsxedge02
+nsx_edge02_ip: 192.168.110.58
+#
+# Variables for multiple controllers when using NSX Manager APIs
+#
+nsx_controller01_vm_name: nsxcontroller01
+nsx_controller01_hostname: nsxcontroller01
+nsx_controller01_ip: 192.168.110.16
+nsx_controller02_vm_name: nsxcontroller02
+nsx_controller02_hostname: nsxcontroller02
+nsx_controller02_ip: 192.168.110.17
+nsx_controller03_vm_name: nsxcontroller03
+nsx_controller03_hostname: nsxcontroller03
+nsx_controller03_ip: 192.168.110.18
+mgmt_cluster_moref: domain-c14
+#
+mgmt_network_netmask: 255.255.255.0
+mgmt_network_prefix: 24
+mgmt_network_gateway: 192.168.110.1
+mgmt_network_dns01: 192.168.110.10
+mgmt_network_domain: corp.local
+mgmt_network_ntp01: 192.168.110.10
+#
+nsx_root_pwd: VMware1!
+nsx_cli_pwd: VMware1!
+nsx_admin_pwd: VMware1!
+nsx_cli_audit_pwd: VMware1!
+datastore01: dc1-nfs
+datastore01_moref: datastore-10
+vm_network: "VM Network"
+vm_network_moref: network-12
+edge01_network1: overlay-01
+edge01_network1_moref: dvportgroup-44
+edge01_network2: vlan-01
+edge01_network2_moref: dvportgroup-43
+edge01_network3: "VM Network"
+edge01_network3_moref: "VM Network"
+edge02_network1: overlay-02
+edge02_network1_moref: dvportgroup-48
+edge02_network2: vlan-02
+edge02_network2_moref: dvportgroup-47
+edge02_network3: "VM Network"
+edge02_network3_moref: "VM Network"
+#
+manager_role: nsx-manager
+# edge_size: small
+edge_size: medium
+control_cluster_secret: VMware1!
+#
+# KVM details
+#
+kvm01_hostname: kvm-01
+kvm02_hostname: kvm-02
+kvm01_ip: 192.168.110.55
+kvm02_ip: 192.168.110.56
+kvm_username: vmware
+kvm_pwd: VMware1!
+kvm_su_pwd: VMware1!
+#
+overlay_tz_name: overlay_tz01
+overlay_nvds_name: overlay_nvds01
+overlay_tz_description: "Overlay TZ"
+vlan_tz_name: vlan_tz01
+vlan_nvds_name: vlan_nvds01
+vlan_tz_description: "VLAN TZ"
+#
+uplink_profile_display_name: "Single uplink"
+active_uplink_name: "uplink1"
+uplink_profile_vlan: 0
+kvm_uplink: ens160
+#
+tep_pool_name: TEP-pool
+tep_pool_description: "TEP IP pool"
+tep_pool_dns: 192.168.110.10
+tep_pool_start: 192.168.210.100
+tep_pool_end: 192.168.210.199
+tep_pool_gw: 192.168.210.1
+tep_pool_cidr: 192.168.210.0/24
+#
+edge_overlay_uplink: fp-eth0
+edge_vlan_uplink: fp-eth1
+edge_cluster01_name: "edge-cluster-01"
+#
+compute_collection_tn_template_name: "Compute Collection TN Template"
+esxi_uplink: vmnic2
+#
+# logical-switching 
+#
+uplink_logical_switches:
+  - t0_edge01_uplink
+  - t0_edge02_uplink
+uplink_ls_vlan_ids: 
+  - 0
+  - 0
+# uplink_ls_ips must be the same as in t0_uplink1_ip and t0_uplink2_ip
+uplink_ls_ips: 
+  - 192.168.120.3
+  - 192.168.130.3
+uplink_ls_prefixes: 
+  - 24
+  - 24
+overlay_logical_switches:
+  - web
+  - app
+  - db
+overlay_ls_gateways:
+  - 172.16.10.1
+  - 172.16.20.1
+  - 172.16.30.1
+overlay_ls_prefixes:
+  - 24
+  - 24
+  - 24
+vlan_logical_switches:
+  - sample_vlan_ls_01
+  - sample_vlan_ls_02
+  - sample_vlan_ls_03
+vlan_ls_vlan_ids:
+  - 10
+  - 20
+  - 30
+vlan_ls_gateways:
+  - 172.17.10.1
+  - 172.17.20.1
+  - 172.17.30.1
+vlan_ls_prefixes:
+  - 24
+  - 24
+  - 24
+path_to_output_vars_file: /home/localadmin/angel/
+output_vars_file_name: output_vars.yml
+#
+# vpod-router related
+#
+path_to_bgpd_conf: /etc/quagga/bgpd.conf
+vpod_router_pwd: VMware1!
+vpod_router_ena_pwd: VMware1!
+nsx_t0_as: 100
+vpod_router_as: 200
+vpod_router_bgp_ip01: 192.168.120.1
+vpod_router_bgp_ip02: 192.168.130.1
+vpod_router_max_paths: 4
+#
+# Logical routers
+#
+tier0_description: "Default T0 router"
+tier0_name: t0-router
+tier1_description: "Default T1 router"
+tier1_name: t1-router
+t0_uplink1_name: rport-t0-uplink1
+t0_uplink2_name: rport-t0-uplink2
+# t0_uplink1_ip and t0_uplink2_ip  must be the same as in uplink_ls_ips
+t0_uplink1_ip: 192.168.120.3
+t0_uplink2_ip: 192.168.130.3
+t0_uplink1_prefix: 24 
+t0_uplink2_prefix: 24 
+#
+# DFW
+#
+tag_list:
+  - vmtag
+  - lstag
+  - lptag
+scope_list:
+  - vmtag
+  - lstag
+  - lptag
+#
+# Load balancer
+#
+threetierapp_http_monitor_url: /cgi-bin/hol.cgi
+threetierapp_http_monitor_port: 80
+threetierapp_http_monitor_name: 3tierapp-http-monitor
+threetierapp_http_monitor_description: LB_Http_Monitor for 3-tier app
+web_servers_pool_name: "web-servers"
+web_servers_pool_description: "Pool of web servers"
+web_servers_vip_ip: 172.16.10.10
+web_servers_vip_name: web-vip
+web_servers_vip_description: "Virtual IP address for 3-tier app"
+lb_name: lb-01
+#
+# NSX Manager backup
+#
+backup_folder: /home/vmware/NSX-BACKUPS
+backup_passphrase: VMware1!

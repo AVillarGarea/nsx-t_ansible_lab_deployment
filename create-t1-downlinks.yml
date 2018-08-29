@@ -1,0 +1,65 @@
+---
+#
+# create-t1-downlinks.yml
+#
+  - name: Get logical switch id
+    become: yes
+    shell: more {{ path_to_output_vars_file }}{{ output_vars_file_name }} | grep {{ index.0 }}_ls_id | grep -o '....................................$'
+    register: output
+    delegate_to: 127.0.0.1
+
+  - set_fact:
+      tmp_ls_id: "{{ output.stdout }}"
+
+  - name: Create logical switch port for {{ index.0 }} T1 downlink
+    uri:
+      url: https://{{nsx_manager_ip}}/api/v1/logical-ports
+      method: POST
+      user: admin
+      password: "{{ nsx_admin_pwd }}"
+      headers:
+        Content-Type: "application/json"
+      body_format: json
+      body: "{
+        \"logical_switch_id\": \"{{ tmp_ls_id }}\",
+        \"admin_state\": \"UP\"
+      }"
+      force_basic_auth: yes
+      validate_certs: no
+      status_code: 201
+    register: output
+
+  - set_fact:
+      tmp_ls_port_id: "{{ output.json.id }}"
+
+  - name: Create {{ index.0 }} T1 downlink
+    uri:
+      url: https://{{nsx_manager_ip}}/api/v1/logical-router-ports
+      method: POST
+      user: admin
+      password: "{{ nsx_admin_pwd }}"
+      headers:
+        Content-Type: "application/json"
+      body_format: json
+      body: "{
+        \"resource_type\": \"LogicalRouterDownLinkPort\",
+        \"display_name\": \"{{ index.0 }} downlink\",
+        \"logical_router_id\": \"{{ hostvars['nsx-manager']['tier1_id'] }}\",
+        \"linked_logical_switch_port_id\": {
+           \"target_display_name\": \"{{ index.0 }} downlink\",
+           \"is_valid\": true,
+           \"target_type\": \"LogicalPort\",
+           \"target_id\": \"{{ tmp_ls_port_id }}\"
+        },
+        \"subnets\": [
+             {
+                \"ip_addresses\": [
+                     \"{{ index.1 }}\"
+                  ],
+                \"prefix_length\": \"{{ index.2 }}\"
+             }
+          ]
+      }"
+      force_basic_auth: yes
+      validate_certs: no
+      status_code: 201

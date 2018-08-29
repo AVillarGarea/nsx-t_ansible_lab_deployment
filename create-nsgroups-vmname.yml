@@ -1,0 +1,87 @@
+---
+#
+# create-nsgroups-vmname.yml
+#
+# Separated tasks file for creating NS GROUPS and writing their ID to the output vars file
+# using with_items to loop on both tasks at the same time
+#
+- name: Create {{ index }} NSGroup
+  uri:
+    url: https://{{nsx_manager_ip}}/api/v1/ns-groups
+    method: POST
+    user: admin
+    password: "{{ nsx_admin_pwd }}"
+    headers:
+      Content-Type: "application/json"
+    body_format: json
+    body: "{
+      \"resource_type\": \"NSGroup\",
+         \"display_name\": \"{{ index }} VMs\",
+         \"membership_criteria\": [
+              {
+                  \"resource_type\": \"NSGroupSimpleExpression\",
+                  \"op\": \"CONTAINS\",
+                  \"target_type\": \"VirtualMachine\",
+                  \"value\": \"{{ index }}\",
+                  \"target_property\": \"name\"
+              }
+           ]
+    }"
+    force_basic_auth: yes
+    validate_certs: no
+    status_code: 201
+  register: output
+  delegate_to: nsx-manager
+# For this delegate_to to work properly it is important to use groups and not
+# single hosts on the tasks that call this task files
+
+- set_fact:
+    tmp_nsgroup_id: "{{ output.json.id }}"
+
+- name: Write NS Group ID to output-vars file
+  lineinfile:
+    path: "{{ path_to_output_vars_file }}{{ output_vars_file_name }}"
+    regexp: "{{ index }}_nsgroup_id:"
+    line: "{{ index }}_nsgroup_id: {{ output.json.id }}"
+  delegate_to: 127.0.0.1
+# This delegate_to line runs this task on localhost instead of nsx-manager
+
+- name: Get All VM NS Group Revision number
+  uri:
+    url: https://{{nsx_manager_ip}}/api/v1/ns-groups/{{ all_vms_nsgroup_id }}
+    method: GET
+    user: admin
+    password: "{{ nsx_admin_pwd }}"
+    headers:
+      Content-Type: "application/json"
+    force_basic_auth: yes
+    validate_certs: no
+    status_code: 200
+  register: output
+  delegate_to: nsx-manager
+
+- name: Add {{ index }} group to All VM NS Group
+  uri:
+    url: https://{{nsx_manager_ip}}/api/v1/ns-groups/{{ all_vms_nsgroup_id }}?action=ADD_MEMBERS
+    method: POST
+    user: admin
+    password: "{{ nsx_admin_pwd }}"
+    headers:
+      Content-Type: "application/json"
+    body_format: json
+    body: "{
+      \"members\": [
+          {
+            \"resource_type\": \"NSGroupSimpleExpression\",
+            \"op\": \"EQUALS\",
+            \"target_type\": \"NSGroup\",
+            \"value\": \"{{ tmp_nsgroup_id }}\",
+            \"target_property\": \"id\"
+          }
+       ]
+    }"
+    force_basic_auth: yes
+    validate_certs: no
+    status_code: 200
+  register: output
+  delegate_to: nsx-manager

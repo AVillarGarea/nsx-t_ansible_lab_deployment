@@ -1,0 +1,38 @@
+---
+#
+# create-vlan-switches.yml
+#
+# Separated tasks file for creating VLAN logical switches and writing their ID to the output vars file
+# using with_items to loop on both tasks at the same time
+#
+- name: Create vlan logical switches
+  uri: 
+    url: https://{{nsx_manager_ip}}/api/v1/logical-switches
+    method: POST
+    user: admin
+    password: "{{ nsx_admin_pwd }}"
+    headers:
+      Content-Type: "application/json"
+    body_format: json
+    body: "{
+      \"transport_zone_id\": \"{{ hostvars['nsx-manager']['vlan_tz_id'] }}\",
+      \"replication_mode\": \"MTEP\",
+      \"admin_state\":\"UP\",
+      \"display_name\": \"{{ index.0 }}\",
+      \"vlan\": \"{{ index.1 }}\"
+    }"
+    force_basic_auth: yes
+    validate_certs: no
+    status_code: 201
+  register: output
+  delegate_to: nsx-manager
+# For this delegate_to to work properly it is important to use groups and not
+# single hosts on the tasks that call this task files 
+
+- name: Write switch ID to output-vars file
+  lineinfile:
+    path: "{{ path_to_output_vars_file }}{{ output_vars_file_name }}"
+    regexp: "{{ index.0 }}_ls_id:"
+    line: "{{ index.0 }}_ls_id: {{ output.json.id }}"
+  delegate_to: 127.0.0.1
+# This delegate_to line runs this task on localhost instead of nsx-manager

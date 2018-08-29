@@ -1,0 +1,2040 @@
+---
+- name: REMOVE LOCALHOST SSH KNOWN HOSTS
+  hosts: localhost
+  gather_facts: no
+  tasks:
+  - name: Check if root known_hosts exists
+    become: yes
+    stat:
+      path: /root/.ssh/known_hosts
+    register: known_hosts
+  - name: Remove ssh known hosts file if it exists
+    become: yes
+    shell: cd /root/.ssh && rm known_hosts
+    when: known_hosts.stat.exists == True
+
+- name: REMOVE VIBs AND REBOOT ESXi
+  hosts: esxi-hosts
+  gather_facts: no
+  tasks:
+  - name: Remove VIBs and reboot host
+    become: yes
+    shell: esxcli software vib remove -n nsx-shared-libs -n nsx-common-libs -n nsx-metrics-libs -n nsx-rpc-libs -n nsx-nestdb-libs -n nsxa -n nsx-lldp -n nsx-da -n nsx-exporter -n nsx-aggservice -n nsxcli -n nsx-python-protobuf -n nsx-sfhc -n nsx-netcpa -n nsx-mpa -n nsx-esx-datapath -n nsx-host -n nsx-support-bundle-client -n nsx-nestdb -n nsx-platform-client -n nsx-hyperbus --force --no-live-install; reboot
+
+- name: REMOVE EXISTING NSX PACKAGES ON KVM NODES
+  hosts: kvm-hosts
+  gather_facts: no
+  tasks:
+  - name: Uninstall existing NSX packages
+    become: yes
+    shell: apt-get -y remove "nsx*"; apt-get install -f
+
+- name: DEPLOY NSX APPLIANCES
+  hosts: localhost
+  gather_facts: no
+  vars_files:
+  - vars_file.yml
+  tasks:
+  - name: Deploy NSX manager
+    become: yes
+    shell: 'ovftool --name={{ nsx_manager_vm_name }} --X:injectOvfEnv --X:logFile=ovftool.log --allowExtraConfig --datastore={{ datastore01 }} --network="{{ vm_network }}" --acceptAllEulas --noSSLVerify --diskMode=thin --powerOn --prop:nsx_role={{ manager_role }} --prop:nsx_ip_0={{ nsx_manager_ip }} --prop:nsx_netmask_0={{ mgmt_network_netmask }} --prop:nsx_gateway_0={{ mgmt_network_gateway }} --prop:nsx_dns1_0={{ mgmt_network_dns01 }} --prop:nsx_domain_0={{ mgmt_network_domain }} --prop:nsx_ntp_0={{ mgmt_network_ntp01 }} --prop:nsx_isSSHEnabled=True --prop:nsx_allowSSHRootLogin=True --prop:nsx_passwd_0={{ nsx_root_pwd }} --prop:nsx_cli_passwd_0={{ nsx_cli_pwd }} --prop:nsx_hostname={{ nsx_manager_hostname }} {{ ova_folder }}{{ manager_ova_name }}-{{manager_ova_build }}.ova vi://{{ vcsa01_admin }}:{{ vcsa01_pwd }}@{{ vcsa01_ip }}/?ip={{ mgmt_host01_ip }}' 
+
+  - name: Deploy NSX controller
+    become: yes
+    shell: 'ovftool --name={{ nsx_controller_vm_name }} --X:injectOvfEnv --X:logFile=ovftool.log --allowExtraConfig --datastore={{ datastore01 }} --network="{{ vm_network }}" --noSSLVerify --diskMode=thin --powerOn --prop:nsx_ip_0={{ nsx_controller_ip }} --prop:nsx_netmask_0={{ mgmt_network_netmask }} --prop:nsx_gateway_0={{ mgmt_network_gateway }} --prop:nsx_dns1_0={{ mgmt_network_dns01 }} --prop:nsx_domain_0={{ mgmt_network_domain }} --prop:nsx_ntp_0={{ mgmt_network_ntp01 }} --prop:nsx_isSSHEnabled=True --prop:nsx_allowSSHRootLogin=True --prop:nsx_passwd_0={{ nsx_root_pwd }} --prop:nsx_cli_passwd_0={{ nsx_cli_pwd }} --prop:nsx_cli_audit_passwd_0={{ nsx_cli_audit_pwd }} --prop:nsx_hostname={{ nsx_controller_hostname }} {{ ova_folder }}{{ controller_ova_name }}-{{controller_ova_build }}.ova vi://{{ vcsa01_admin }}:{{ vcsa01_pwd }}@{{ vcsa01_ip }}/?ip={{ mgmt_host02_ip }}'
+
+  - name: Deploy NSX Edge01
+    become: yes
+    shell: 'ovftool --name={{ nsx_edge01_vm_name }} --deploymentOption={{ edge_size }} --X:injectOvfEnv --X:logFile=ovftool.log --allowExtraConfig --datastore={{ datastore01 }} --net:"Network 0={{ vm_network }}" --net:"Network 1={{ edge01_network1 }}" --net:"Network 2={{ edge01_network2 }}" --net:"Network 3={{ edge01_network3 }}" --acceptAllEulas --noSSLVerify --diskMode=thin --powerOn --prop:nsx_ip_0={{ nsx_edge01_ip }} --prop:nsx_netmask_0={{ mgmt_network_netmask }} --prop:nsx_gateway_0={{ mgmt_network_gateway }} --prop:nsx_dns1_0={{ mgmt_network_dns01 }} --prop:nsx_domain_0={{ mgmt_network_domain }} --prop:nsx_ntp_0={{ mgmt_network_ntp01 }} --prop:nsx_isSSHEnabled=True --prop:nsx_allowSSHRootLogin=True --prop:nsx_passwd_0={{ nsx_root_pwd }} --prop:nsx_cli_passwd_0={{ nsx_cli_pwd }} --prop:nsx_hostname={{ nsx_edge01_hostname }} {{ ova_folder }}{{ edge_ova_name }}-{{edge_ova_build }}.ova vi://{{ vcsa01_admin }}:{{ vcsa01_pwd }}@{{ vcsa01_ip }}/?ip={{ mgmt_host01_ip }}'
+  
+  - name: Deploy NSX Edge02
+    become: yes
+    shell: 'ovftool --name={{ nsx_edge02_vm_name }} --deploymentOption={{ edge_size }} --X:injectOvfEnv --X:logFile=ovftool.log --allowExtraConfig --datastore={{ datastore01 }} --net:"Network 0={{ vm_network }}" --net:"Network 1={{ edge02_network1 }}" --net:"Network 2={{ edge02_network2 }}" --net:"Network 3={{ edge02_network3 }}" --acceptAllEulas --noSSLVerify --diskMode=thin --powerOn --prop:nsx_ip_0={{ nsx_edge02_ip }} --prop:nsx_netmask_0={{ mgmt_network_netmask }} --prop:nsx_gateway_0={{ mgmt_network_gateway }} --prop:nsx_dns1_0={{ mgmt_network_dns01 }} --prop:nsx_domain_0={{ mgmt_network_domain }} --prop:nsx_ntp_0={{ mgmt_network_ntp01 }} --prop:nsx_isSSHEnabled=True --prop:nsx_allowSSHRootLogin=True --prop:nsx_passwd_0={{ nsx_root_pwd }} --prop:nsx_cli_passwd_0={{ nsx_cli_pwd }} --prop:nsx_hostname={{ nsx_edge02_hostname }} {{ ova_folder }}{{ edge_ova_name }}-{{edge_ova_build }}.ova vi://{{ vcsa01_admin }}:{{ vcsa01_pwd }}@{{ vcsa01_ip }}/?ip={{ mgmt_host02_ip }}' 
+
+- name: Wait for manager, first controller and edge VMs to be reachable
+  hosts:
+    - nsx-manager
+    - nsx-controller01
+    - edges
+  gather_facts: No
+  tasks:
+    - name: Wait for port 22 on all  VMs
+      local_action: wait_for port=22 host={{ ansible_ssh_host }}
+
+- name: ALLOW ADDITIONAL TIME FOR EDGES TO BE FULLY OPERATIONAL
+  hosts: localhost
+  connection: local
+  gather_facts: no
+  tasks:
+    - pause: seconds=90
+
+- name: GET MANAGER THUMBPRINT
+  hosts: nsx-manager
+  gather_facts: no
+  tasks:
+  - name: Get Manager thumbprint
+    become: yes
+    shell: nsxcli -c get certificate api thumbprint
+    register: mp_thumbprint
+
+- name: JOIN CONTROLLERS TO MP
+  hosts: controllers
+  gather_facts: no
+  vars_files:
+  - vars_file.yml
+  tasks:
+  - name: Join Controllers to MP
+    become: yes
+    shell: nsxcli -c join management-plane {{nsx_manager_ip}} username admin thumbprint {{ hostvars['nsx-manager'].mp_thumbprint.stdout}} password {{ nsx_cli_pwd }}
+    register: response
+
+- name: BUILD CONTROLLER CLUSTER
+  hosts: controllers
+  gather_facts: no
+  vars_files:
+  - vars_file.yml
+  tasks:
+  - name: Set Controller Cluster Secret
+    become: yes
+    shell: nsxcli -c set control-cluster security-model shared-secret secret {{ control_cluster_secret }}
+
+  - name: Initialize Control Cluster
+    become: yes
+    shell: nsxcli -c initialize control-cluster
+
+- name: JOIN EDGES TO MP
+  hosts: edges
+  gather_facts: no
+  vars_files:
+  - vars_file.yml
+  tasks:
+  - name: Join edges to MP
+    become: yes
+    shell: nsxcli -c join management-plane {{nsx_manager_ip}} username admin thumbprint {{ hostvars['nsx-manager'].mp_thumbprint.stdout}} password {{ nsx_cli_pwd }}
+
+- name: INSTALLATION AND JOIN OF KVM HOSTS 
+  hosts: kvm-hosts
+  gather_facts: no
+  vars_files:
+  - vars_file.yml
+  tasks:
+  - name: Install required 3rd party packages
+    become: yes
+    shell: apt-get install -y plymouth-themes plymouth-label; apt-get install -y linux-headers-4.4.0-21-generic;apt-get install -y dkms; apt-get install -y ieee-data javascript-common; apt-get install -y libboost-chrono1.58.0 libboost-date-time1.58.0 libboost-program-options1.58.0; apt-get install -y libgflags2v5 libgoogle-glog0v5 libgoogle-perftools4; apt-get install -y libjs-jquery libleveldb1v5 libprotobuf9v5 libyaml-0-2; apt-get install -y python-gevent python-linecache2 python-mako python-netaddr python-protobuf python-simplejson python-traceback2 python-unittest2; apt-get install -y python-yaml traceroute; apt-get install -y libunwind8 libsnappy1v5 libboost-filesystem1.58.0; apt-get install -y qemu-kvm libvirt-bin virtinst virt-manager virt-viewer ubuntu-vm-builder bridge-utils; apt autoremove -y
+
+  - name: Download LCP package for Ubuntu
+    get_url:
+      url:  https://YOUR_REPO/nsx-lcp-{{ ubuntu_lcp_build }}-ubuntu-xenial_amd64.tar.gz
+      dest: /tmp/nsx-lcp-{{ ubuntu_lcp_build }}-ubuntu-xenial_amd64.tar.gz
+
+  - name: Install LCP
+    become: yes
+    shell: tar -xvf /tmp/nsx-lcp-{{ ubuntu_lcp_build }}-ubuntu-xenial_amd64.tar.gz -C /tmp/; dpkg -i /tmp/nsx-lcp-xenial_amd64/*.deb; /etc/init.d/openvswitch-switch force-reload-kmod
+
+  - name: Join kvm-01 to MP
+    become: yes
+    shell: nsxcli -c join management-plane {{nsx_manager_ip}} username admin thumbprint {{ hostvars['nsx-manager'].mp_thumbprint.stdout}} password {{ nsx_cli_pwd }}
+    register: output
+    run_once: true
+    delegate_to: kvm-01
+  - set_fact:
+#     Skips the first 45 charachters from the output, assigns all others to the variable
+      kvm01_id: "{{ output.stdout[45:] }}"
+    run_once: true
+    delegate_to: kvm-01
+
+  - name: Join kvm-02 to MP
+    become: yes
+    shell: nsxcli -c join management-plane {{nsx_manager_ip}} username admin thumbprint {{ hostvars['nsx-manager'].mp_thumbprint.stdout}} password {{ nsx_cli_pwd }}
+    register: output
+    run_once: true
+    delegate_to: kvm-02
+  - set_fact:
+#     Skips the first 45 charachters from the output, assigns all others to the variable
+      kvm02_id: "{{ output.stdout[45:] }}"
+    run_once: true
+    delegate_to: kvm-02
+
+#
+# Lines below add KVM hosts to NSX through NSX Manager APIs. 
+# They are commented out since KVM hosts have been added manually in previous lines
+#
+#- name: GET KVM-01 THUMBPRINT
+#  hosts: kvm-01
+#  gather_facts: no
+#  tasks:
+#  - name: Get kvm-01 thumbprint
+#    become: yes
+#    shell: awk '{print $2}' /etc/ssh/ssh_host_rsa_key.pub | base64 -d | sha256sum -b | sed 's/ .*$//' | xxd -r -p | base64
+#    register: output
+#  - set_fact:
+#      kvm01_thumb={{ output.stdout }}
+#
+#- name: GET KVM-02 THUMBPRINT
+#  hosts: kvm-02
+#  gather_facts: no
+#  tasks:
+#  - name: Get kvm-02 thumbprint
+#    become: yes
+#    shell: awk '{print $2}' /etc/ssh/ssh_host_rsa_key.pub | base64 -d | sha256sum -b | sed 's/ .*$//' | xxd -r -p | base64
+#    register: output
+#  - set_fact:
+#      kvm02_thumb={{ output.stdout }}
+#
+#- name: JOIN KVM HOSTS
+#  hosts: nsx-manager
+#  gather_facts: no
+#  vars_files:
+#    - vars_file.yml
+#  tasks:
+#  - name: Add kvm01
+#    uri:
+#      url: https://{{nsx_manager_ip}}/api/v1/fabric/nodes
+#      method: POST
+#      user: admin
+#      password: "{{ nsx_admin_pwd }}"
+#      headers:
+#        Content-Type: "application/json"
+#      body_format: json
+#      body: "{ \"resource_type\": \"HostNode\", \"display_name\": \"{{ kvm01_hostname }}\", \"ip_addresses\": [ \"{{ kvm01_ip }}\" ], \"os_type\": \"UBUNTUKVM\", \"os_version\":\"16.04\", \"host_credential\": { \"username\": \"{{ kvm_username }}\", \"password\": \"{{ kvm_pwd }}\", \"thumbprint\": \"{{ hostvars['kvm-01']['kvm01_thumb'] }}\" } }"
+#      force_basic_auth: yes
+#      validate_certs: no
+#      status_code: 201
+#    register: output
+#  - set_fact:
+#      kvm01_id: "{{ output.json.id }}"
+#
+#  - name: Add kvm02
+#    uri:
+#      url: https://{{nsx_manager_ip}}/api/v1/fabric/nodes
+#      method: POST
+#      user: admin
+#      password: "{{ nsx_admin_pwd }}"
+#      headers:
+#        Content-Type: "application/json"
+#      body_format: json
+#      body: "{ \"resource_type\": \"HostNode\", \"display_name\": \"{{ kvm02_hostname }}\", \"ip_addresses\": [ \"{{ kvm02_ip }}\" ], \"os_type\": \"UBUNTUKVM\", \"os_version\":\"16.04\", \"host_credential\": { \"username\": \"{{ kvm_username }}\", \"password\": \"{{ kvm_pwd }}\", \"thumbprint\": \"{{ hostvars['kvm-02']['kvm02_thumb'] }}\" } }"
+#      force_basic_auth: yes
+#      validate_certs: no
+#      status_code: 201
+#    register: output
+#  - set_fact:
+#      kvm02_id: "{{ output.json.id }}"
+
+# Requires setting vcsa default shell to bash - kb2100508
+- name: GET VCENTER THUMBPRINT
+  hosts: vcsa01
+  gather_facts: no
+  tasks:
+  - name: Get vcsa01 thumbprint
+    become: no
+    shell: openssl x509 -in /etc/vmware-vpx/ssl/rui.crt -fingerprint -sha256 -noout
+    register: output
+  - set_fact:
+#     Skips the first 19 charachters from the output, assigns all others to the variable
+      vcsa01_thumb: "{{ output.stdout[19:] }}"
+
+- name: ADD COMPUTE MANAGERS
+  hosts: nsx-manager
+  gather_facts: no
+  vars_files:
+    - vars_file.yml
+  tasks:
+  - name: Add vcsa01
+    uri:
+      url: https://{{nsx_manager_ip}}/api/v1/fabric/compute-managers
+      method: POST
+      user: admin
+      password: "{{ nsx_admin_pwd }}"
+      headers:
+        Content-Type: "application/json"
+      body_format: json
+      body:  "{ \"server\": \"{{ vcsa01_ip }}\", \"origin_type\": \"vCenter\", \"display_name\": \"{{ vcsa01_hostname }}\", \"credential\": { \"credential_type\": \"UsernamePasswordLoginCredential\", \"username\": \"{{ vcsa01_admin }}\", \"password\": \"{{ vcsa01_pwd }}\", \"thumbprint\": \"{{ hostvars['vcsa01']['vcsa01_thumb'] }}\" } }"
+      force_basic_auth: yes
+      validate_certs: no
+      status_code: 201
+    register: output
+  - set_fact:
+      vcsa01_id: "{{ output.json.id }}"
+
+- name: WAIT FOR COMPUTE MANAGER TO BE READY
+  hosts: localhost
+  connection: local
+  gather_facts: no
+  tasks:
+    - pause: seconds=90
+
+- name: AUTO-INSTALL NSX ON COMP CLUSTER
+  hosts: nsx-manager
+  gather_facts: no
+  vars_files:
+    - vars_file.yml
+  tasks:
+  - name: Auto-install NSX on CompA cluster
+    uri:
+      url: https://{{nsx_manager_ip}}/api/v1/fabric/compute-collection-fabric-templates
+      method: POST
+      user: admin
+      password: "{{ nsx_admin_pwd }}"
+      headers:
+        Content-Type: "application/json"
+      body_format: json
+      body:  "{ \"compute_collection_id\": \"{{ hostvars['nsx-manager']['vcsa01_id'] }}:{{ compA_moref_id }}\", \"auto_install_nsx\": \"true\" }"
+      force_basic_auth: yes
+      validate_certs: no
+      status_code: 201
+
+- name: CREATE TRANSPORT ZONES
+  hosts: nsx-manager
+  gather_facts: no
+  vars_files:
+    - vars_file.yml
+  tasks:
+  - name: Create overlay TZ
+    uri:
+      url: https://{{nsx_manager_ip}}/api/v1/transport-zones/
+      method: POST
+      user: admin
+      password: "{{ nsx_admin_pwd }}"
+      headers:
+        Content-Type: "application/json"
+      body_format: json
+      body: "{ \"display_name\": \"{{ overlay_tz_name }}\", \"host_switch_name\": \"{{ overlay_nvds_name }}\", \"description\": \"{{ overlay_tz_description }}\", \"transport_type\": \"OVERLAY\" }"
+      force_basic_auth: yes
+      validate_certs: no
+      status_code: 201
+    register: output
+  - set_fact:
+      overlay_tz_id: "{{ output.json.id }}"
+
+  - name: Create vlan TZ
+    uri:
+      url: https://{{nsx_manager_ip}}/api/v1/transport-zones/
+      method: POST
+      user: admin
+      password: "{{ nsx_admin_pwd }}"
+      headers:
+        Content-Type: "application/json"
+      body_format: json
+      body: "{ \"display_name\": \"{{ vlan_tz_name }}\", \"host_switch_name\": \"{{ vlan_nvds_name }}\", \"description\": \"{{ vlan_tz_description }}\", \"transport_type\": \"VLAN\" }"
+      force_basic_auth: yes
+      validate_certs: no
+      status_code: 201
+    register: output
+  - set_fact:
+      vlan_tz_id: "{{ output.json.id }}"
+
+- name: CREATE UPLINK PROFILE
+  hosts: nsx-manager
+  gather_facts: no
+  vars_files:
+    - vars_file.yml
+  tasks:
+  - name: Create single-uplink uplink profile
+    uri:
+      url: https://{{nsx_manager_ip}}/api/v1/host-switch-profiles
+      method: POST
+      user: admin
+      password: "{{ nsx_admin_pwd }}"
+      headers:
+        Content-Type: "application/json"
+      body_format: json
+      body: "{ \"resource_type\": \"UplinkHostSwitchProfile\", \"display_name\": \"{{ uplink_profile_display_name }}\", \"mtu\": 1600, \"teaming\": { \"standby_list\": [], \"active_list\": [ { \"uplink_name\": \"{{ active_uplink_name }}\", \"uplink_type\": \"PNIC\"  } ], \"policy\": \"FAILOVER_ORDER\" }, \"transport_vlan\": \"{{ uplink_profile_vlan }}\" }"
+      force_basic_auth: yes
+      validate_certs: no
+      status_code: 201
+    register: output
+  - set_fact:
+      uplink_profile_id: "{{ output.json.id }}"
+
+- name: CREATE IP POOL
+  hosts: nsx-manager
+  gather_facts: no
+  vars_files:
+    - vars_file.yml
+  tasks:
+  - name: Create TEP IP pool
+    uri:
+      url: https://{{nsx_manager_ip}}/api/v1/pools/ip-pools
+      method: POST
+      user: admin
+      password: "{{ nsx_admin_pwd }}"
+      headers:
+        Content-Type: "application/json"
+      body_format: json
+      body: "{ \"display_name\": \"{{ tep_pool_name }}\", \"description\": \"{{ tep_pool_description }}\", \"subnets\": [ { \"dns_nameservers\": [\"{{ tep_pool_dns }}\"], \"allocation_ranges\": [ { \"start\": \"{{ tep_pool_start }}\", \"end\": \"{{ tep_pool_end}}\" } ], \"gateway_ip\": \"{{ tep_pool_gw }}\", \"cidr\": \"{{ tep_pool_cidr }}\" } ] }"
+      force_basic_auth: yes
+      validate_certs: no
+      status_code: 201
+    register: output
+  - set_fact:
+      tep_pool_id: "{{ output.json.id }}"
+
+#- name: ALLOCATE ADDITIONAL TIME TO FINISH NSX INSTALLATION BEFORE CREATING FABRIC NODES
+#  hosts: localhost
+#  connection: local
+#  gather_facts: no
+#  tasks:
+#    - pause: seconds=300
+
+- name: CREATE TRANSPORT NODES
+  hosts: nsx-manager
+  gather_facts: no
+  vars_files:
+    - vars_file.yml
+  tasks:
+  - name: Create kvm-01 transport node
+    uri:
+      url: https://{{nsx_manager_ip}}/api/v1/transport-nodes
+      method: POST
+      user: admin
+      password: "{{ nsx_admin_pwd }}"
+      headers: 
+        Content-Type: "application/json"
+      body_format: json
+      body: "{ \"resource_type\": \"TransportNode\", \"display_name\": \"{{ kvm01_hostname }}\", \"description\": \"{{ kvm01_hostname }} TN\", \"host_switch_spec\": {\"resource_type\": \"StandardHostSwitchSpec\", \"host_switches\": [ { \"host_switch_profile_ids\": [ { \"value\": \"{{ hostvars['nsx-manager']['uplink_profile_id'] }}\", \"key\": \"UplinkHostSwitchProfile\" } ], \"host_switch_name\": \"{{ overlay_nvds_name }}\", \"pnics\": [ { \"device_name\": \"{{ kvm_uplink }}\", \"uplink_name\": \"{{ active_uplink_name }}\" } ], \"ip_assignment_spec\": { \"resource_type\": \"StaticIpPoolSpec\", \"ip_pool_id\": \"{{ hostvars['nsx-manager']['tep_pool_id'] }}\" } } ] }, \"transport_zone_endpoints\": [ {\"transport_zone_id\": \"{{ hostvars['nsx-manager']['overlay_tz_id'] }}\" } ], \"node_id\": \"{{ hostvars['kvm-01']['kvm01_id'] }}\" }"
+      force_basic_auth: yes
+      validate_certs: no
+      status_code: 201
+    register: output
+  - set_fact:
+      kvm01_fabric_id: "{{ output.json.id }}"
+
+  - name: Create kvm02 transport node
+    uri:
+      url: https://{{nsx_manager_ip}}/api/v1/transport-nodes
+      method: POST
+      user: admin
+      password: "{{ nsx_admin_pwd }}"
+      headers: 
+        Content-Type: "application/json"
+      body_format: json
+      body: "{ \"resource_type\": \"TransportNode\", \"display_name\": \"{{ kvm02_hostname }}\", \"description\": \"{{ kvm02_hostname }} TN\", \"host_switch_spec\": {\"resource_type\": \"StandardHostSwitchSpec\", \"host_switches\": [ { \"host_switch_profile_ids\": [ { \"value\": \"{{ hostvars['nsx-manager']['uplink_profile_id'] }}\", \"key\": \"UplinkHostSwitchProfile\" } ], \"host_switch_name\": \"{{ overlay_nvds_name }}\", \"pnics\": [ { \"device_name\": \"{{ kvm_uplink }}\", \"uplink_name\": \"{{ active_uplink_name }}\" } ], \"ip_assignment_spec\": { \"resource_type\": \"StaticIpPoolSpec\", \"ip_pool_id\": \"{{ hostvars['nsx-manager']['tep_pool_id'] }}\" } } ] }, \"transport_zone_endpoints\": [ {\"transport_zone_id\": \"{{ hostvars['nsx-manager']['overlay_tz_id'] }}\" } ], \"node_id\": \"{{ hostvars['kvm-02']['kvm02_id'] }}\" }"
+      force_basic_auth: yes
+      validate_certs: no
+      status_code: 201
+    register: output
+  - set_fact:
+      kvm02_fabric_id: "{{ output.json.id }}"
+
+- name: GET EDGE FABRIC IDs
+# Another option is to get the IDs when registering the edges
+# Requires modifying the play for adding edges
+  hosts: nsx-manager
+  gather_facts: no
+  tasks:
+  - name: Get edge01 fabric ID
+    become: no
+    shell: nsxcli -c get nodes | grep nsxedge01
+    register: output
+  - set_fact:
+#     Considers characters between 0 and 36 and assigns them to the variable
+      edge01_id: "{{ output.stdout[0:36] }}"
+
+  - name: Get edge02 fabric ID
+    become: no
+    shell: nsxcli -c get nodes | grep nsxedge02
+    register: output
+  - set_fact:
+#     Considers characters between 0 and 36 and assigns them to the variable
+      edge02_id: "{{ output.stdout[0:36] }}"
+
+- name: CREATE EDGE TRANSPORT NODES
+  hosts: nsx-manager
+  gather_facts: no
+  vars_files:
+    - vars_file.yml
+  tasks:
+  - name: Create edge01 transport node
+    uri:
+      url: https://{{nsx_manager_ip}}/api/v1/transport-nodes
+      method: POST
+      user: admin
+      password: "{{ nsx_admin_pwd }}"
+      headers: 
+        Content-Type: "application/json"
+      body_format: json
+      body: "{ \"resource_type\": \"TransportNode\", \"display_name\": \"{{ nsx_edge01_hostname }}\", \"description\": \"{{ nsx_edge01_hostname }} TN\", \"host_switch_spec\": { \"resource_type\": \"StandardHostSwitchSpec\", \"host_switches\": [ { \"host_switch_profile_ids\": [ { \"value\": \"{{ hostvars['nsx-manager']['uplink_profile_id'] }}\", \"key\": \"UplinkHostSwitchProfile\" } ], \"host_switch_name\": \"{{ overlay_nvds_name }}\", \"pnics\": [  { \"device_name\": \"{{ edge_overlay_uplink }}\", \"uplink_name\": \"{{ active_uplink_name }}\"  } ], \"ip_assignment_spec\": { \"resource_type\": \"StaticIpPoolSpec\", \"ip_pool_id\": \"{{ hostvars['nsx-manager']['tep_pool_id'] }}\"  }  },  { \"host_switch_profile_ids\": [  { \"value\": \"{{ hostvars['nsx-manager']['uplink_profile_id'] }}\", \"key\": \"UplinkHostSwitchProfile\" }  ], \"host_switch_name\": \"{{ vlan_nvds_name }}\", \"pnics\": [  { \"device_name\": \"{{ edge_vlan_uplink }}\", \"uplink_name\": \"{{ active_uplink_name }}\"  }  ], \"ip_assignment_spec\": { \"resource_type\": \"StaticIpPoolSpec\", \"ip_pool_id\": \"{{ hostvars['nsx-manager']['tep_pool_id'] }}\" } } ] }, \"transport_zone_endpoints\": [ { \"transport_zone_id\": \"{{ hostvars['nsx-manager']['overlay_tz_id'] }}\" }, { \"transport_zone_id\": \"{{ hostvars['nsx-manager']['vlan_tz_id'] }}\" }  ], \"node_id\": \"{{ hostvars['nsx-manager']['edge01_id'] }}\" }"
+      force_basic_auth: yes
+      validate_certs: no
+      status_code: 201
+    register: output
+  - set_fact:
+      edge01_fabric_id: "{{ output.json.id }}"
+
+  - name: Create edge02 transport node
+    uri:
+      url: https://{{nsx_manager_ip}}/api/v1/transport-nodes
+      method: POST
+      user: admin
+      password: "{{ nsx_admin_pwd }}"
+      headers: 
+        Content-Type: "application/json"
+      body_format: json
+      body: "{ \"resource_type\": \"TransportNode\", \"display_name\": \"{{ nsx_edge02_hostname }}\", \"description\": \"{{ nsx_edge02_hostname }} TN\", \"host_switch_spec\": { \"resource_type\": \"StandardHostSwitchSpec\", \"host_switches\": [ { \"host_switch_profile_ids\": [ { \"value\": \"{{ hostvars['nsx-manager']['uplink_profile_id'] }}\", \"key\": \"UplinkHostSwitchProfile\" } ], \"host_switch_name\": \"{{ overlay_nvds_name }}\", \"pnics\": [  { \"device_name\": \"{{ edge_overlay_uplink }}\", \"uplink_name\": \"{{ active_uplink_name }}\"  } ], \"ip_assignment_spec\": { \"resource_type\": \"StaticIpPoolSpec\", \"ip_pool_id\": \"{{ hostvars['nsx-manager']['tep_pool_id'] }}\"  }  },  { \"host_switch_profile_ids\": [  { \"value\": \"{{ hostvars['nsx-manager']['uplink_profile_id'] }}\", \"key\": \"UplinkHostSwitchProfile\" }  ], \"host_switch_name\": \"{{ vlan_nvds_name }}\", \"pnics\": [  { \"device_name\": \"{{ edge_vlan_uplink }}\", \"uplink_name\": \"{{ active_uplink_name }}\"  }  ], \"ip_assignment_spec\": { \"resource_type\": \"StaticIpPoolSpec\", \"ip_pool_id\": \"{{ hostvars['nsx-manager']['tep_pool_id'] }}\" } } ] }, \"transport_zone_endpoints\": [ { \"transport_zone_id\": \"{{ hostvars['nsx-manager']['overlay_tz_id'] }}\" }, { \"transport_zone_id\": \"{{ hostvars['nsx-manager']['vlan_tz_id'] }}\" }  ], \"node_id\": \"{{ hostvars['nsx-manager']['edge02_id'] }}\" }"
+      force_basic_auth: yes
+      validate_certs: no
+      status_code: 201
+    register: output
+  - set_fact:
+      edge02_fabric_id: "{{ output.json.id }}"
+
+- name: GET EDGE HA PROFILE ID
+  hosts: nsx-manager
+  gather_facts: no
+  vars_files:
+    - vars_file.yml
+  tasks:
+  - become: yes
+    shell: "curl -k -s -u admin:VMware1! -X GET https://192.168.110.19/api/v1/cluster-profiles | grep EdgeHighAvailabilityProfile -A1 | grep id"
+    register: output
+  - set_fact:
+#     Considers characters between 2 and 38 and assigns them to the variable
+      edge_ha_profile: "{{ output.stdout[12:48] }}"
+
+- name: CREATE EDGE CLUSTER
+  hosts: nsx-manager
+  gather_facts: no
+  vars_files:
+    - vars_file.yml
+  tasks:
+  - name: "Create edge cluster 01"
+    uri:
+      url: https://{{nsx_manager_ip}}/api/v1/edge-clusters
+      method: POST
+      user: admin
+      password: "{{ nsx_admin_pwd }}"
+      headers: 
+        Content-Type: "application/json"
+      body_format: json
+      body: "{ \"display_name\": \"{{ edge_cluster01_name }}\", \"cluster_profile_bindings\": [ { \"profile_id\": \"{{ hostvars['nsx-manager']['edge_ha_profile'] }}\", \"resource_type\": \"EdgeHighAvailabilityProfile\" } ], \"members\":  [ { \"transport_node_id\": \"{{ hostvars['nsx-manager']['edge01_fabric_id'] }}\" }, { \"transport_node_id\": \"{{ hostvars['nsx-manager']['edge02_fabric_id'] }}\" } ] }"
+      force_basic_auth: yes
+      validate_certs: no
+      status_code: 201
+    register: output
+  - set_fact:
+      edge_cluster01_id: "{{ output.json.id }}"
+
+- name: CONFIGURE ESXi AUTO TNs
+  hosts: nsx-manager
+  gather_facts: no
+  vars_files:
+    - vars_file.yml
+  tasks:
+  - name: Configure esxi auto-tn
+    uri:
+      url: https://{{nsx_manager_ip}}/api/v1/compute-collection-transport-node-templates
+      method: POST
+      user: admin
+      password: "{{ nsx_admin_pwd }}"
+      headers: 
+        Content-Type: "application/json"
+      body_format: json
+      body: "{ 
+        \"resource_type\": \"ComputeCollectionTransportNodeTemplate\",
+        \"display_name\": \"{{ compute_collection_tn_template_name }}\",
+        \"description\": \"{{ compute_collection_tn_template_name }}\",
+        \"compute_collection_ids\": [
+            \"{{ hostvars['nsx-manager']['vcsa01_id'] }}:{{ compA_moref_id }}\"
+        ],
+        \"transport_zone_endpoints\": [{
+            \"transport_zone_id\": \"{{ hostvars['nsx-manager']['overlay_tz_id'] }}\",
+        }],
+        \"host_switch_spec\": {
+            \"resource_type\": \"StandardHostSwitchSpec\",
+            \"host_switches\": [{
+                \"host_switch_name\": \"{{ overlay_nvds_name }}\",
+                \"host_switch_profile_ids\": [{
+                    \"value\": \"{{ hostvars['nsx-manager']['uplink_profile_id'] }}\",
+                    \"key\": \"UplinkHostSwitchProfile\"
+                }],
+                \"pnics\": [{
+                    \"device_name\": \"{{ esxi_uplink }}\",
+                    \"uplink_name\": \"{{ active_uplink_name }}\"
+                }],
+                \"ip_assignment_spec\": {
+                    \"resource_type\": \"StaticIpPoolSpec\",
+                    \"ip_pool_id\": \"{{ hostvars['nsx-manager']['tep_pool_id'] }}\"
+                }
+            }]
+        }
+      }"
+      force_basic_auth: yes
+      validate_certs: no
+      status_code: 201
+    register: output
+  - set_fact:
+      compute_collection_tn_template_id: "{{ output.json.id }}"
+
+- name: CONFIGURE SYSLOG AND DISABLE CLI TIMEOUT ON NSX APPLIANCES
+  hosts: nsx-appliances
+  gather_facts: no
+  tasks:
+  - name: Configure Syslog and CLI timeout
+    become: yes
+    shell: nsxcli -c set logging-server vrli.corp.local proto udp level info; nsxcli -c set cli-timeout 0
+
+#
+# This play checks if an output-vars file exists
+# It will be used to store logical switch ids and maybe more variables later
+# If the file exists, overwrites its contents, if it doesnt, the file is created
+#
+- name: CHECK OUTPUT VARS FILE
+  hosts: localhost
+  gather_facts: no
+  vars_files:
+    - vars_file.yml
+  tasks:
+    - name: Check if output-vars file exist
+      stat:
+        path: "{{ path_to_output_vars_file }}{{output_vars_file_name}}"
+      register: output_vars_stat
+
+    - name: Create output-vars file if doesnt exist
+      file:
+        path: "{{ path_to_output_vars_file }}{{output_vars_file_name}}"
+        state: touch
+      when: output_vars_stat.stat.exists == False
+#
+# This play calls Create switches task files, one for overlay switches, another for vlan switches
+# This allows to create the LS and write its ID while iteration over the corresponding vars group
+# Do not forget to include create-overlay-switches.yml and create-vlan-switches.yml
+#
+# It is important to use a group and not a host in hosts, otherwise the delegate_to clause
+# inside create-*-switches.yml fails.
+#
+- name: CREATE LOGICAL SWITCHES
+  hosts: managers
+  gather_facts: no
+  vars_files:
+    - vars_file.yml
+  tasks:
+    - include: create-overlay-switches.yml
+      with_items: "{{ overlay_logical_switches }}"
+      loop_control:
+        loop_var: index
+    - include: create-vlan-switches.yml
+      with_together:
+        - "{{ uplink_logical_switches }}"
+        - "{{ uplink_ls_vlan_ids }}"
+      loop_control:
+        loop_var: index
+    - include: create-vlan-switches.yml
+      with_together:
+        - "{{ vlan_logical_switches }}"
+        - "{{ vlan_ls_vlan_ids }}"
+      loop_control:
+        loop_var: index
+
+- name: CONNECT KVM-01 VMs TO NSX LOGICAL SWITCHES
+  hosts: kvm-01
+  vars_files:
+    - vars_file.yml
+  gather_facts: no
+  tasks:
+  - include_vars: "{{ path_to_output_vars_file }}{{ output_vars_file_name }}"
+
+  - name: Replace source bridge string on web03 xml file
+    replace:
+      path: /home/vmware/web03.xml
+      regexp: "<source bridge='virbr0'/>"
+      replace: "<source bridge='nsx-managed'/> <virtualport type='openvswitch'></virtualport>"
+
+  - name: Destroy and redeploy web03 VM. Get port ID
+    become: yes
+# AWK cmd below prints 36 characters starting from the 39th-last character
+    shell: virsh destroy web03 >/dev/null 2>&1; virsh undefine web03 >/dev/null 2>&1; virsh define web03.xml >/dev/null 2>&1; virsh start web03 >/dev/null 2>&1; virsh autostart web03 >/dev/null 2>&1; rm web03.xml; virsh dumpxml web03 > web03.xml; cat web03.xml | grep eid | awk '{print substr($0,length($0)-38,36)}'
+    register: output
+  - set_fact:
+      web03_vm_vif: "{{ output.stdout }}"
+
+  - name: Create logical switch port for web03 VM
+    uri:
+      url: https://{{nsx_manager_ip}}/api/v1/logical-ports
+      method: POST
+      user: admin
+      password: "{{ nsx_admin_pwd }}"
+      headers:
+        Content-Type: "application/json"
+      body_format: json
+      body: "{
+        \"display_name\": \"web03/kvm-01\",
+        \"logical_switch_id\": \"{{ web_ls_id }}\",
+        \"admin_state\": \"UP\",
+        \"attachment\": {\"attachment_type\": \"VIF\", \"id\":\"{{ web03_vm_vif }}\"}
+      }"
+      force_basic_auth: yes
+      validate_certs: no
+      status_code: 201
+
+- name: CONNECT KVM-02 VMs TO NSX LOGICAL SWITCHES
+  hosts: kvm-02
+  vars_files:
+    - vars_file.yml
+  gather_facts: no
+  tasks:
+  - include_vars: "{{ path_to_output_vars_file }}{{ output_vars_file_name }}"
+
+  - name: Replace source bridge string on db01 xml file
+    replace:
+      path: /home/vmware/db01.xml
+      regexp: "<source bridge='virbr0'/>"
+      replace: "<source bridge='nsx-managed'/> <virtualport type='openvswitch'></virtualport>"
+
+  - name: Destroy and redeploy db01 VM. Get port ID
+    become: yes
+# AWK cmd below prints 36 characters starting from the 39th-last character
+    shell: virsh destroy db01 >/dev/null 2>&1; virsh undefine db01 >/dev/null 2>&1; virsh define db01.xml >/dev/null 2>&1; virsh start db01 >/dev/null 2>&1; virsh autostart db01 >/dev/null 2>&1; rm db01.xml; virsh dumpxml db01 > db01.xml; cat db01.xml | grep eid | awk '{print substr($0,length($0)-38,36)}'
+    register: output
+  - set_fact:
+      db01_vm_vif: "{{ output.stdout }}"
+
+  - name: Create logical switch port for db01 VM
+    uri:
+      url: https://{{nsx_manager_ip}}/api/v1/logical-ports
+      method: POST
+      user: admin
+      password: "{{ nsx_admin_pwd }}"
+      headers:
+        Content-Type: "application/json"
+      body_format: json
+      body: "{
+        \"display_name\": \"db01/kvm-02\",
+        \"logical_switch_id\": \"{{ db_ls_id }}\",
+        \"admin_state\": \"UP\",
+        \"attachment\": {\"attachment_type\": \"VIF\", \"id\":\"{{ db01_vm_vif }}\"}
+      }"
+      force_basic_auth: yes
+      validate_certs: no
+      status_code: 201
+
+- name: UPDATE QUAGGA ROUTER CONFIG
+  hosts: vpod-router
+  gather_facts: no
+  vars_files:
+  - vars_file.yml
+  tasks:
+  - name: Check if quagga bgpd.conf file exists
+    stat:
+      path: "{{ path_to_bgpd_conf }}"
+    register: bgp_conf_stat
+
+  - name: Remove old quagga bgpd.conf file if exists
+    become: yes
+    file:
+      state: absent
+      path: "{{ path_to_bgpd_conf }}"
+    when: bgp_conf_stat.stat.exists == True
+
+  - name: Create new quagga bgpd.conf file
+    blockinfile:
+      path: "{{ path_to_bgpd_conf }}"
+      create: yes
+      owner: quagga
+      group: quaggavty
+      block: |
+        hostname bgpd
+        password {{ vpod_router_pwd }}
+        enable password {{ vpod_router_ena_pwd }}
+        !
+        router bgp {{ vpod_router_as }}
+         bgp router-id {{ vpod_router_bgp_ip01 }}
+         bgp log-neighbor-changes
+         network 0.0.0.0/0
+         redistribute connected metric 66
+         neighbor {{ t0_uplink1_ip }} remote-as {{ nsx_t0_as }}
+         neighbor {{ t0_uplink2_ip }} remote-as {{ nsx_t0_as }}
+         maximum-paths {{ vpod_router_max_paths }}
+        !
+        log file /var/log/quagga/bgpd.log
+        !
+
+  - name: Restart quagga
+    become: yes
+    shell: /etc/init.d/quagga restart
+
+- name: CREATE LOGICAL ROUTERS
+  hosts: nsx-manager
+  gather_facts: no
+  vars_files:
+    - vars_file.yml
+  tasks:
+  - name: Create Tier0 router
+    uri:
+      url: https://{{nsx_manager_ip}}/api/v1/logical-routers
+      method: POST
+      user: admin
+      password: "{{ nsx_admin_pwd }}"
+      headers:
+        Content-Type: "application/json"
+      body_format: json
+      body: "{
+        \"resource_type\": \"LogicalRouter\",
+        \"description\": \"{{ tier0_description }}\",
+        \"display_name\": \"{{ tier0_name }}\",
+        \"edge_cluster_id\": \"{{ hostvars['nsx-manager']['edge_cluster01_id'] }}\",
+        \"router_type\": \"TIER0\",
+        \"high_availability_mode\": \"ACTIVE_ACTIVE\"
+      }"
+      force_basic_auth: yes
+      validate_certs: no
+      status_code: 201
+    register: output
+  - set_fact:
+      tier0_id: "{{ output.json.id }}"
+
+  - name: Create Tier1 router
+    uri:
+      url: https://{{nsx_manager_ip}}/api/v1/logical-routers
+      method: POST
+      user: admin
+      password: "{{ nsx_admin_pwd }}"
+      headers:
+        Content-Type: "application/json"
+      body_format: json
+      body: "{
+        \"resource_type\": \"LogicalRouter\",
+        \"description\": \"{{ tier1_description }}\",
+        \"display_name\": \"{{ tier1_name }}\",
+        \"edge_cluster_id\": \"{{ hostvars['nsx-manager']['edge_cluster01_id'] }}\",
+        \"router_type\": \"TIER1\",
+        \"high_availability_mode\": \"ACTIVE_STANDBY\"
+      }"
+      force_basic_auth: yes
+      validate_certs: no
+      status_code: 201
+    register: output
+  - set_fact:
+      tier1_id: "{{ output.json.id }}"
+
+  - name: Create T0-T1 logical port on T0
+    uri:
+      url: https://{{nsx_manager_ip}}/api/v1/logical-router-ports
+      method: POST
+      user: admin
+      password: "{{ nsx_admin_pwd }}"
+      headers:
+        Content-Type: "application/json"
+      body_format: json
+      body: "{
+        \"resource_type\": \"LogicalRouterLinkPortOnTIER0\",
+        \"description\": \"Port created on Tier-0 router for 'default-t1-router'\",
+        \"logical_router_id\": \"{{ hostvars['nsx-manager']['tier0_id'] }}\"
+      }"
+      force_basic_auth: yes
+      validate_certs: no
+      status_code: 201
+    register: output
+  - set_fact:
+      t0_port_for_t1: "{{ output.json.id }}"
+
+  - name: Create T0-T1 logical port on T1 and connected to T0
+    uri:
+      url: https://{{nsx_manager_ip}}/api/v1/logical-router-ports
+      method: POST
+      user: admin
+      password: "{{ nsx_admin_pwd }}"
+      headers:
+        Content-Type: "application/json"
+      body_format: json
+      body: "{
+        \"resource_type\": \"LogicalRouterLinkPortOnTIER1\",
+        \"description\": \"Port created on Tier-1 router for 'default-t0-router'\",
+        \"logical_router_id\": \"{{ hostvars['nsx-manager']['tier1_id'] }}\",
+        \"linked_logical_router_port_id\": {
+                \"is_valid\": true,
+                \"target_type\": \"LogicalRouterLinkPortOnTIER0\",
+                \"target_id\": \"{{ hostvars['nsx-manager']['t0_port_for_t1'] }}\"
+            },
+
+      }"
+      force_basic_auth: yes
+      validate_certs: no
+      status_code: 201
+    register: output
+  - set_fact:
+      t1_port_for_t0: "{{ output.json.id }}"
+
+- name: CREATE T0 UPLINKS
+  hosts: nsx-manager
+  gather_facts: no
+  vars_files:
+    - vars_file.yml
+  tasks:
+  - include_vars: "{{ path_to_output_vars_file }}{{ output_vars_file_name }}"
+  - name: Create logical switch port for T0 uplink1
+    uri:
+      url: https://{{nsx_manager_ip}}/api/v1/logical-ports
+      method: POST
+      user: admin
+      password: "{{ nsx_admin_pwd }}"
+      headers:
+        Content-Type: "application/json"
+      body_format: json
+      body: "{
+        \"logical_switch_id\": \"{{ t0_edge01_uplink_ls_id }}\",
+        \"admin_state\": \"UP\"
+      }"
+      force_basic_auth: yes
+      validate_certs: no
+      status_code: 201
+    register: output
+  - set_fact:
+      t0_uplink1_ls_port_id: "{{ output.json.id }}"
+
+  - name: Create logical switch port for T0 uplink2
+    uri:
+      url: https://{{nsx_manager_ip}}/api/v1/logical-ports
+      method: POST
+      user: admin
+      password: "{{ nsx_admin_pwd }}"
+      headers:
+        Content-Type: "application/json"
+      body_format: json
+      body: "{
+        \"logical_switch_id\": \"{{ t0_edge02_uplink_ls_id }}\",
+        \"admin_state\": \"UP\"
+      }"
+      force_basic_auth: yes
+      validate_certs: no
+      status_code: 201
+    register: output
+  - set_fact:
+      t0_uplink2_ls_port_id: "{{ output.json.id }}"
+
+  - name: Create T0 uplink on edge01
+    uri:
+      url: https://{{nsx_manager_ip}}/api/v1/logical-router-ports
+      method: POST
+      user: admin
+      password: "{{ nsx_admin_pwd }}"
+      headers:
+        Content-Type: "application/json"
+      body_format: json
+      body: "{
+        \"resource_type\": \"LogicalRouterUpLinkPort\",
+        \"display_name\": \"{{ t0_uplink1_name }}\",
+        \"logical_router_id\": \"{{ hostvars['nsx-manager']['tier0_id'] }}\",
+        \"linked_logical_switch_port_id\": {
+           \"target_display_name\": \"{{ hostvars['nsx-manager']['t0_uplink1_ls_port_id'] }}\",
+           \"is_valid\": true,
+           \"target_type\": \"LogicalPort\",
+           \"target_id\": \"{{ hostvars['nsx-manager']['t0_uplink1_ls_port_id'] }}\"
+        },
+        \"edge_cluster_member_index\": [
+              1
+          ],
+        \"subnets\": [
+             {
+                \"ip_addresses\": [
+                     \"{{ t0_uplink1_ip }}\"
+                  ],
+                \"prefix_length\": \"{{ t0_uplink1_prefix }}\"
+             }
+          ]
+      }"
+      force_basic_auth: yes
+      validate_certs: no
+      status_code: 201
+    register: output
+  - set_fact:
+      t0_uplink1_id: "{{ output.json.id }}"
+
+  - name: Create T0 uplink on edge02
+    uri:
+      url: https://{{nsx_manager_ip}}/api/v1/logical-router-ports
+      method: POST
+      user: admin
+      password: "{{ nsx_admin_pwd }}"
+      headers:
+        Content-Type: "application/json"
+      body_format: json
+      body: "{
+        \"resource_type\": \"LogicalRouterUpLinkPort\",
+        \"display_name\": \"{{ t0_uplink2_name }}\",
+        \"logical_router_id\": \"{{ hostvars['nsx-manager']['tier0_id'] }}\",
+        \"linked_logical_switch_port_id\": {
+           \"target_display_name\": \"{{ hostvars['nsx-manager']['t0_uplink2_ls_port_id'] }}\",
+           \"is_valid\": true,
+           \"target_type\": \"LogicalPort\",
+           \"target_id\": \"{{ hostvars['nsx-manager']['t0_uplink2_ls_port_id'] }}\"
+        },
+        \"edge_cluster_member_index\": [
+              0
+          ],
+        \"subnets\": [
+             {
+                \"ip_addresses\": [
+                     \"{{ t0_uplink2_ip }}\"
+                  ],
+                \"prefix_length\": \"{{ t0_uplink2_prefix }}\"
+             }
+          ]
+      }"
+      force_basic_auth: yes
+      validate_certs: no
+      status_code: 201
+    register: output
+  - set_fact:
+      t0_uplink2_id: "{{ output.json.id }}"
+
+- name: BGP CONFIGURATION
+  hosts: nsx-manager
+  gather_facts: no
+  vars_files:
+    - vars_file.yml
+  tasks:
+  - name: Create 1st BGP neighbor
+    uri:
+      url: https://{{nsx_manager_ip}}/api/v1/logical-routers/{{ hostvars['nsx-manager']['tier0_id'] }}/routing/bgp/neighbors
+      method: POST
+      user: admin
+      password: "{{ nsx_admin_pwd }}"
+      headers:
+        Content-Type: "application/json"
+      body_format: json
+      body: "{
+        \"neighbor_address\": \"{{ vpod_router_bgp_ip01 }}\",
+        \"remote_as_num\": \"{{ vpod_router_as }}\",
+        \"source_address\": \"{{ t0_uplink1_ip }}\",
+        \"enable_bfd\": true,
+        \"address_families\": [
+          {
+            \"type\" : \"IPV4_UNICAST\",
+            \"enabled\" : true,
+          }
+        ]
+      }"
+      force_basic_auth: yes
+      validate_certs: no
+      status_code: 200
+    register: output
+  - set_fact:
+      bgp_neighbor01: "{{ output.json.id }}"
+
+  - name: Create 2nd BGP neighbor
+    uri:
+      url: https://{{nsx_manager_ip}}/api/v1/logical-routers/{{ hostvars['nsx-manager']['tier0_id'] }}/routing/bgp/neighbors
+      method: POST
+      user: admin
+      password: "{{ nsx_admin_pwd }}"
+      headers:
+        Content-Type: "application/json"
+      body_format: json
+      body: "{
+        \"neighbor_address\": \"{{ vpod_router_bgp_ip02 }}\",
+        \"remote_as_num\": \"{{ vpod_router_as }}\",
+        \"source_address\": \"{{ t0_uplink2_ip }}\",
+        \"enable_bfd\": true,
+        \"address_families\": [
+          {
+            \"type\" : \"IPV4_UNICAST\",
+            \"enabled\" : true,
+          }
+        ]
+      }"
+      force_basic_auth: yes
+      validate_certs: no
+      status_code: 200
+    register: output
+  - set_fact:
+      bgp_neighbor02: "{{ output.json.id }}"
+
+  - name: Get BGP config revision number
+    uri:
+      url: https://{{nsx_manager_ip}}/api/v1/logical-routers/{{ hostvars['nsx-manager']['tier0_id'] }}/routing/bgp/
+      method: GET
+      user: admin
+      password: "{{ nsx_admin_pwd }}"
+      headers:
+        Content-Type: "application/json"
+      force_basic_auth: yes
+      validate_certs: no
+      status_code: 200
+    register: output
+  - set_fact:
+     bgp_config_revision: " {{ output.json._revision }}"
+
+  - name: Enable BGP and ECMP
+    uri:
+      url: https://{{nsx_manager_ip}}/api/v1/logical-routers/{{ hostvars['nsx-manager']['tier0_id'] }}/routing/bgp/
+      method: PUT
+      user: admin
+      password: "{{ nsx_admin_pwd }}"
+      headers:
+        Content-Type: "application/json"
+      body_format: json
+      body: "{
+        \"as_num\": \"{{ nsx_t0_as }}\",
+        \"enabled\": true,
+        \"ecmp\": true,
+        \"_revision\": \"{{ bgp_config_revision }} \"
+      }"
+      force_basic_auth: yes
+      validate_certs: no
+      status_code: 200
+
+- name: CREATE T1 DOWNLINKS
+  hosts: managers
+  gather_facts: no
+  vars_files:
+    - vars_file.yml
+  tasks:
+    - include_vars: "{{ path_to_output_vars_file }}{{ output_vars_file_name }}"
+    - name: Create overlay T1 downlinks
+      include: create-t1-downlinks.yml
+      with_together:
+        - "{{ overlay_logical_switches }}"
+        - "{{ overlay_ls_gateways }}"
+        - "{{ overlay_ls_prefixes }}"
+      loop_control:
+        loop_var: index
+
+#    - name: Create vlan T1 downlinks
+#      include: create-t1-downlinks.yml
+#      with_together:
+#        - "{{ vlan_logical_switches }}"
+#        - "{{ vlan_ls_gateways }}"
+#        - "{{ vlan_ls_prefixes }}"
+#      loop_control:
+#        loop_var: index
+
+- name: CONFIGURE T1 ADVERTISEMENT AND T0 REDISTRIBUTION
+  hosts: managers
+  gather_facts: no
+  vars_files:
+    - vars_file.yml
+  tasks:
+  - name: Get T1 route advertisement revision
+    uri:
+      url: https://{{nsx_manager_ip}}/api/v1/logical-routers/{{ hostvars['nsx-manager']['tier1_id'] }}/routing/advertisement
+      method: GET
+      user: admin
+      password: "{{ nsx_admin_pwd }}"
+      headers:
+        Content-Type: "application/json"
+      force_basic_auth: yes
+      validate_certs: no
+      status_code: 200
+    register: output
+  - set_fact:
+      t1_advertisement_revision: "{{ output.json._revision }}"
+
+  - name: Configure T1 route advertisement
+    uri:
+      url: https://{{nsx_manager_ip}}/api/v1/logical-routers/{{ hostvars['nsx-manager']['tier1_id'] }}/routing/advertisement
+      method: PUT
+      user: admin
+      password: "{{ nsx_admin_pwd }}"
+      headers:
+        Content-Type: "application/json"
+      body_format: json
+      body: "{
+        \"resource_type\": \"AdvertisementConfig\",
+        \"description\": \"\",
+        \"display_name\": \"T1 route advertisement policy\",
+        \"tags\": [],
+        \"advertise_nsx_connected_routes\": true,
+        \"advertise_static_routes\": false,
+        \"advertise_nat_routes\": false,
+        \"advertise_lb_vip\": false,
+        \"advertise_lb_snat_ip\": false,
+        \"enabled\": true,
+        \"_revision\": \"{{ t1_advertisement_revision }}\"
+      }"
+      force_basic_auth: yes
+      validate_certs: no
+      status_code: 200
+
+  - name: Get T0 route redistribution revision
+    uri:
+      url: https://{{nsx_manager_ip}}/api/v1/logical-routers/{{ hostvars['nsx-manager']['tier0_id'] }}/routing/redistribution/rules
+      method: GET
+      user: admin
+      password: "{{ nsx_admin_pwd }}"
+      headers:
+        Content-Type: "application/json"
+      force_basic_auth: yes
+      validate_certs: no
+      status_code: 200
+    register: output
+  - set_fact:
+      t0_redistribution_revision: "{{ output.json._revision }}"
+
+  - name: Configure T0 route redistribution
+    uri:
+      url: https://{{nsx_manager_ip}}/api/v1/logical-routers/{{ hostvars['nsx-manager']['tier0_id'] }}/routing/redistribution/rules
+      method: PUT
+      user: admin
+      password: "{{ nsx_admin_pwd }}"
+      headers:
+        Content-Type: "application/json"
+      body_format: json
+      body: "{
+        \"_revision\": \"{{ t0_redistribution_revision }}\",
+        \"rules\": [
+          {
+            \"display_name\": \"NSX-Connected-Networks\",
+            \"description\": \"\",
+            \"destination\": \"BGP\",
+            \"sources\": [ \"NSX_STATIC\" ]
+          }
+        ]
+      }"
+      force_basic_auth: yes
+      validate_certs: no
+      status_code: 200
+
+  - name: Get BGP route redistribution revision
+    uri:
+      url: https://{{nsx_manager_ip}}/api/v1/logical-routers/{{ hostvars['nsx-manager']['tier0_id'] }}/routing/redistribution/
+      method: GET
+      user: admin
+      password: "{{ nsx_admin_pwd }}"
+      headers:
+        Content-Type: "application/json"
+      force_basic_auth: yes
+      validate_certs: no
+      status_code: 200
+    register: output
+  - set_fact:
+      bgp_redistribution_revision: "{{ output.json._revision }}"
+
+  - name: Configure T0 route redistribution
+    uri:
+      url: https://{{nsx_manager_ip}}/api/v1/logical-routers/{{ hostvars['nsx-manager']['tier0_id'] }}/routing/redistribution/
+      method: PUT
+      user: admin
+      password: "{{ nsx_admin_pwd }}"
+      headers:
+        Content-Type: "application/json"
+      body_format: json
+      body: "{
+        \"resource_type\": \"RedistributionConfig\",
+        \"display_name\": \"BGP route redistribution\",
+        \"bgp_enabled\": true,
+        \"_revision\":  \"{{ bgp_redistribution_revision }}\",
+      }"
+      force_basic_auth: yes
+      validate_certs: no
+      status_code: 200
+
+- name: CREATE VM-NAME NS-GROUPS BASED ON OVERLAY LOGICAL SWITCHES
+  hosts: managers
+  gather_facts: no
+  vars_files:
+    - vars_file.yml
+  tasks:
+    - name: Create an all VM NS Group
+      uri:
+        url: https://{{nsx_manager_ip}}/api/v1/ns-groups
+        method: POST
+        user: admin
+        password: "{{ nsx_admin_pwd }}"
+        headers:
+          Content-Type: "application/json"
+        body_format: json
+        body: "{
+          \"resource_type\": \"NSGroup\",
+          \"display_name\": \"All VMs NS Group\"
+        }"
+        force_basic_auth: yes
+        validate_certs: no
+        status_code: 201
+      register: output
+
+    - set_fact:
+        all_vms_nsgroup_id: "{{ output.json.id }}"
+
+    - include: create-nsgroups-vmname.yml
+      with_items: "{{ overlay_logical_switches }}"
+      loop_control:
+        loop_var: index
+
+- name: CREATE A SAMPLE TAG-BASED NSGROUP
+  hosts: managers
+  gather_facts: no
+  vars_files:
+    - vars_file.yml
+  tasks:
+  - name: Create tag-based NS-Group
+    uri:
+      url: https://{{nsx_manager_ip}}/api/v1/ns-groups
+      method: POST
+      user: admin
+      password: "{{ nsx_admin_pwd }}"
+      headers:
+        Content-Type: "application/json"
+      body_format: json
+      body: "{
+        \"display_name\": \"Sample tag-based NSGroup\",
+        \"membership_criteria\": [
+          {
+           \"resource_type\": \"NSGroupTagExpression\",
+           \"target_type\": \"LogicalPort\",
+           \"tag\": \"{{ tag_list[2] }}\",
+           \"scope_op\": \"EQUALS\",
+           \"tag_op\": \"EQUALS\"
+          },
+          {
+           \"resource_type\": \"NSGroupComplexExpression\",
+           \"expressions\": [
+              {
+               \"resource_type\": \"NSGroupTagExpression\",
+               \"scope\": \"{{ scope_list[0] }}\",
+               \"target_type\": \"VirtualMachine\",
+               \"tag\": \"{{ tag_list[0] }}\",
+               \"scope_op\": \"EQUALS\",
+               \"tag_op\": \"EQUALS\"
+              },
+              {
+               \"resource_type\": \"NSGroupSimpleExpression\",
+               \"op\": \"CONTAINS\",
+               \"target_type\": \"VirtualMachine\",
+               \"value\": \"vmname\",
+               \"target_property\": \"name\"
+              }
+             ]
+           }
+         ]
+      }"
+      force_basic_auth: yes
+      validate_certs: no
+      status_code: 201
+    register: output
+
+  - name: Write tag-based NS Group ID to output-vars file
+    lineinfile:
+      path: "{{ path_to_output_vars_file }}{{ output_vars_file_name }}"
+      regexp: "sample_tag_based_nsgroup_id:"
+      line: "sample_tag_based_nsgroup_id: {{ output.json.id }}"
+    delegate_to: 127.0.0.1
+
+- name: SET DEFAULT RULE TO DROP ALL TRAFFIC
+  hosts: nsx-manager
+  gather_facts: no
+  vars_files:
+    - vars_file.yml
+  tasks:
+  - name: Get default L3 section ID
+    uri:
+      url: https://{{nsx_manager_ip}}/api/v1/firewall/sections
+      method: GET
+      user: admin
+      password: "{{ nsx_admin_pwd }}"
+      headers:
+        Content-Type: "application/json"
+      force_basic_auth: yes
+      validate_certs: no
+      status_code: 200
+    register: output
+  - set_fact:
+      dfw_default_l3_section_id:  "{{ output.json.results[2].id }}"
+
+  - name: Get default L3 section rule IDs
+    uri:
+      url: https://{{nsx_manager_ip}}/api/v1/firewall/sections/{{ dfw_default_l3_section_id }}/rules
+      method: GET
+      user: admin
+      password: "{{ nsx_admin_pwd }}"
+      headers:
+        Content-Type: "application/json"
+      force_basic_auth: yes
+      validate_certs: no
+      status_code: 200
+    register: output
+  - set_fact:
+      dfw_default_rule_id:  "{{ output.json.results[0].id }}"
+      dfw_default_rule_revision:  "{{ output.json.results[0]._revision }}"
+
+  - name: Set default rule to block and log all traffic
+    uri:
+      url: https://{{nsx_manager_ip}}/api/v1/firewall/sections/{{ dfw_default_l3_section_id }}/rules/{{ dfw_default_rule_id }}
+      method: PUT
+      user: admin
+      password: "{{ nsx_admin_pwd }}"
+      headers:
+        Content-Type: "application/json"
+      body_format: json
+      body: "{
+        \"_revision\": \"{{ dfw_default_rule_revision }}\",
+        \"id\": \"{{ dfw_default_rule_id }}\",
+        \"logged\": true,
+        \"action\": \"DROP\"
+      }"
+      force_basic_auth: yes
+      validate_certs: no
+      status_code: 200
+
+- name: CREATE RULES TO ALLOW MGMT ACCESS TO VMs
+  hosts: nsx-manager
+  gather_facts: no
+  vars_files:
+    - vars_file.yml
+  tasks:
+  - include_vars: "{{ path_to_output_vars_file }}{{ output_vars_file_name }}"
+  - name: Create section for mgmt rules
+    uri:
+      url: https://{{nsx_manager_ip}}/api/v1/firewall/sections
+      method: POST
+      user: admin
+      password: "{{ nsx_admin_pwd }}"
+      headers:
+        Content-Type: "application/json"
+      body_format: json
+      body: "{
+        \"display_name\": \"VM mgmt rules\",
+        \"section_type\" : \"LAYER3\",
+        \"stateful\" : true,
+        \"applied_tos\": [
+           {
+             \"target_display_name\": \"All VMs NS Group\",
+             \"is_valid\": true,
+             \"target_type\": \"NSGroup\",
+             \"target_id\": \"{{ hostvars['nsx-manager']['all_vms_nsgroup_id'] }}\"
+           }
+        ]
+      }"
+      force_basic_auth: yes
+      validate_certs: no
+      status_code: 201
+    register: output
+  - set_fact:
+      mgmt_rules_section_id: "{{ output.json.id }}"
+
+  - name: Create rules in VM mgmt section
+    uri:
+      url: https://{{nsx_manager_ip}}/api/v1/firewall/sections/{{ mgmt_rules_section_id }}/rules
+      method: POST
+      user: admin
+      password: "{{ nsx_admin_pwd }}"
+      headers:
+        Content-Type: "application/json"
+      body_format: json
+      body: "{
+        \"display_name\": \"Allow VM mgmt access\",
+        \"sources_excluded\": false,
+        \"destinations_excluded\": false,
+        \"sources\": [
+           {
+              \"target_display_name\": \"192.168.110.10\",
+              \"is_valid\": true,
+              \"target_type\": \"IPv4Address\",
+              \"target_id\": \"192.168.110.10\"
+           }
+          ],
+        \"destinations\": [
+           {
+              \"target_display_name\": \"All VMs NS Group\",
+              \"is_valid\": true,
+              \"target_type\": \"NSGroup\",
+              \"target_id\": \"{{ hostvars['nsx-manager']['all_vms_nsgroup_id'] }}\"
+           }
+          ],
+        \"services\": [
+           {
+              \"target_display_name\": \"ICMP Echo Request\",
+              \"is_valid\": true,
+              \"target_type\": \"NSService\",
+              \"target_id\": \"5531a880-61aa-42cc-ba4b-13b9ea611e2f\"
+           },
+           {
+              \"target_display_name\": \"HTTP\",
+              \"is_valid\": true,
+              \"target_type\": \"NSService\",
+              \"target_id\": \"4be6b03c-e190-4011-ad7c-b01cb59845b6\"
+           },
+           {
+              \"target_display_name\": \"SSH\",
+              \"is_valid\": true,
+              \"target_type\": \"NSService\",
+              \"target_id\": \"0b12e2c3-a728-456e-a246-2b722b7b9212\"
+           },
+           {
+              \"target_display_name\": \"HTTPS\",
+              \"is_valid\": true,
+              \"target_type\": \"NSService\",
+              \"target_id\": \"3705b545-81b8-4c0f-b77a-fec77f6bf134\"
+           }
+          ],
+       \"ip_protocol\": \"IPV4_IPV6\",
+       \"logged\": true,
+       \"action\": \"ALLOW\",
+       \"disabled\": false,
+       \"direction\": \"IN_OUT\"
+      }"
+      force_basic_auth: yes
+      validate_certs: no
+      status_code: 200
+
+- name: CREATE RULES FOR 3-TIER APP
+  hosts: nsx-manager
+  gather_facts: no
+  vars_files:
+    - vars_file.yml
+  tasks:
+  - include_vars: "{{ path_to_output_vars_file }}{{ output_vars_file_name }}"
+  - name: Create 3-tier app section
+    uri:
+      url: https://{{nsx_manager_ip}}/api/v1/firewall/sections
+      method: POST
+      user: admin
+      password: "{{ nsx_admin_pwd }}"
+      headers:
+        Content-Type: "application/json"
+      body_format: json
+      body: "{
+        \"display_name\": \"3-tier app rules\",
+        \"section_type\" : \"LAYER3\",
+        \"stateful\" : true,
+        \"applied_tos\": [
+           {
+             \"target_display_name\": \"All VMs NS Group\",
+             \"is_valid\": true,
+             \"target_type\": \"NSGroup\",
+             \"target_id\": \"{{ hostvars['nsx-manager']['all_vms_nsgroup_id'] }}\"
+           }
+        ]
+      }"
+      force_basic_auth: yes
+      validate_certs: no
+      status_code: 201
+    register: output
+  - set_fact:
+      threetierapp_section_id: "{{ output.json.id }}"
+
+  - name: Create app-to-db rule
+    uri:
+      url: https://{{nsx_manager_ip}}/api/v1/firewall/sections/{{ threetierapp_section_id }}/rules
+      method: POST
+      user: admin
+      password: "{{ nsx_admin_pwd }}"
+      headers:
+        Content-Type: "application/json"
+      body_format: json
+      body: "{
+        \"display_name\": \"app to db\",
+        \"sources_excluded\": false,
+        \"destinations_excluded\": false,
+        \"sources\": [
+           {
+              \"is_valid\": true,
+              \"target_type\": \"NSGroup\",
+              \"target_id\": \"{{ hostvars['nsx-manager']['app_nsgroup_id'] }}\"
+           }
+          ],
+        \"destinations\": [
+           {
+              \"is_valid\": true,
+              \"target_type\": \"NSGroup\",
+              \"target_id\": \"{{ hostvars['nsx-manager']['db_nsgroup_id'] }}\"
+           }
+          ],
+        \"services\": [
+           {
+              \"target_display_name\": \"MySQL\",
+              \"is_valid\": true,
+              \"target_type\": \"NSService\",
+              \"target_id\": \"94105840-4f08-4805-a36d-b11368e5f2b1\"
+           }
+          ],
+       \"ip_protocol\": \"IPV4_IPV6\",
+       \"logged\": true,
+       \"action\": \"ALLOW\",
+       \"disabled\": false,
+       \"direction\": \"IN_OUT\"
+      }"
+      force_basic_auth: yes
+      validate_certs: no
+      status_code: 200
+
+  - name: Create NS Service DST PORT tcp-8443
+    uri:
+      url: https://{{nsx_manager_ip}}/api/v1/ns-services
+      method: POST
+      user: admin
+      password: "{{ nsx_admin_pwd }}"
+      headers:
+        Content-Type: "application/json"
+      body_format: json
+      body: "{
+        \"display_name\": \"tcp-8443\",
+        \"nsservice_element\": {
+           \"l4_protocol\": \"TCP\",
+           \"source_ports\": [],
+           \"destination_ports\": [8443],
+           \"resource_type\": \"L4PortSetNSService\"
+           }
+      }"
+      force_basic_auth: yes
+      validate_certs: no
+      status_code: 201
+    register: output
+  - set_fact:
+      tcp_8443_id: "{{ output.json.id }}"
+
+  - name: Create web-to-app rule
+    uri:
+      url: https://{{nsx_manager_ip}}/api/v1/firewall/sections/{{ threetierapp_section_id }}/rules
+      method: POST
+      user: admin
+      password: "{{ nsx_admin_pwd }}"
+      headers:
+        Content-Type: "application/json"
+      body_format: json
+      body: "{
+        \"display_name\": \"web to app\",
+        \"sources_excluded\": false,
+        \"destinations_excluded\": false,
+        \"sources\": [
+           {
+              \"is_valid\": true,
+              \"target_type\": \"NSGroup\",
+              \"target_id\": \"{{ hostvars['nsx-manager']['web_nsgroup_id'] }}\"
+           }
+          ],
+        \"destinations\": [
+           {
+              \"is_valid\": true,
+              \"target_type\": \"NSGroup\",
+              \"target_id\": \"{{ hostvars['nsx-manager']['app_nsgroup_id'] }}\"
+           }
+          ],
+        \"services\": [
+           {
+              \"target_display_name\": \"tcp-8443\",
+              \"is_valid\": true,
+              \"target_type\": \"NSService\",
+              \"target_id\": \"{{ tcp_8443_id }}\"
+           }
+          ],
+       \"ip_protocol\": \"IPV4_IPV6\",
+       \"logged\": true,
+       \"action\": \"ALLOW\",
+       \"disabled\": false,
+       \"direction\": \"IN_OUT\"
+      }"
+      force_basic_auth: yes
+      validate_certs: no
+      status_code: 200
+
+
+  - name: Create any-to-web rule
+    uri:
+      url: https://{{nsx_manager_ip}}/api/v1/firewall/sections/{{ threetierapp_section_id }}/rules
+      method: POST
+      user: admin
+      password: "{{ nsx_admin_pwd }}"
+      headers:
+        Content-Type: "application/json"
+      body_format: json
+      body: "{
+        \"display_name\": \"Any to web\",
+        \"sources_excluded\": false,
+        \"destinations_excluded\": false,
+        \"destinations\": [
+           {
+              \"target_display_name\": \"web VMs\",
+              \"is_valid\": true,
+              \"target_type\": \"NSGroup\",
+              \"target_id\": \"{{ hostvars['nsx-manager']['web_nsgroup_id'] }}\"
+           }
+          ],
+        \"services\": [
+           {
+              \"target_display_name\": \"HTTP\",
+              \"is_valid\": true,
+              \"target_type\": \"NSService\",
+              \"target_id\": \"4be6b03c-e190-4011-ad7c-b01cb59845b6\"
+           },
+           {
+              \"target_display_name\": \"HTTPS\",
+              \"is_valid\": true,
+              \"target_type\": \"NSService\",
+              \"target_id\": \"3705b545-81b8-4c0f-b77a-fec77f6bf134\"
+           }
+          ],
+       \"ip_protocol\": \"IPV4_IPV6\",
+       \"logged\": true,
+       \"action\": \"ALLOW\",
+       \"disabled\": false,
+       \"direction\": \"IN_OUT\"
+      }"
+      force_basic_auth: yes
+      validate_certs: no
+      status_code: 200
+
+
+- name: CREATE RULES TO ALLOW ACCESS TO COMMON SERVICES
+  hosts: nsx-manager
+  gather_facts: no
+  vars_files:
+    - vars_file.yml
+  tasks:
+  - include_vars: "{{ path_to_output_vars_file }}{{ output_vars_file_name }}"
+  - name: Create section for rules to define access common services
+    uri:
+      url: https://{{nsx_manager_ip}}/api/v1/firewall/sections
+      method: POST
+      user: admin
+      password: "{{ nsx_admin_pwd }}"
+      headers:
+        Content-Type: "application/json"
+      body_format: json
+      body: "{
+        \"display_name\": \"Access to Common Services\",
+        \"section_type\" : \"LAYER3\",
+        \"stateful\" : true,
+        \"applied_tos\": [
+           {
+             \"target_display_name\": \"All VMs NS Group\",
+             \"is_valid\": true,
+             \"target_type\": \"NSGroup\",
+             \"target_id\": \"{{ hostvars['nsx-manager']['all_vms_nsgroup_id'] }}\"
+           }
+        ]
+      }"
+      force_basic_auth: yes
+      validate_certs: no
+      status_code: 201
+    register: output
+  - set_fact:
+      common_svcs_section_id: "{{ output.json.id }}"
+
+  - name: Create rules in common services section
+#              \"target_display_name\": \"DNS\",
+#              \"is_valid\": true,
+#              \"target_type\": \"NSService\",
+#              \"target_id\": \"7a355c01-2d32-4d12-8398-8f4eb2099a73\"
+    uri:
+      url: https://{{nsx_manager_ip}}/api/v1/firewall/sections/{{ common_svcs_section_id }}/rules
+      method: POST
+      user: admin
+      password: "{{ nsx_admin_pwd }}"
+      headers:
+        Content-Type: "application/json"
+      body_format: json
+      body: "{
+        \"display_name\": \"Allow access to common svcs\",
+        \"sources_excluded\": false,
+        \"destinations_excluded\": false,
+        \"sources\": [
+           {
+              \"is_valid\": true,
+              \"target_type\": \"NSGroup\",
+              \"target_id\": \"{{ hostvars['nsx-manager']['all_vms_nsgroup_id'] }}\"
+           }
+          ],
+        \"destinations\": [
+           {
+              \"target_display_name\": \"192.168.110.10\",
+              \"is_valid\": true,
+              \"target_type\": \"IPv4Address\",
+              \"target_id\": \"192.168.110.10\"
+           }
+          ],
+        \"services\": [
+           {
+              \"target_display_name\": \"NTP\",
+              \"is_valid\": true,
+              \"target_type\": \"NSService\",
+              \"target_id\": \"6e67bf30-743d-4dd9-b9fd-983ec02e6241\"
+           },
+           {
+              \"target_display_name\": \"HTTP\",
+              \"is_valid\": true,
+              \"target_type\": \"NSService\",
+              \"target_id\": \"4be6b03c-e190-4011-ad7c-b01cb59845b6\"
+           },
+           {
+              \"target_display_name\": \"ICMP Echo Request\",
+              \"is_valid\": true,
+              \"target_type\": \"NSService\",
+              \"target_id\": \"5531a880-61aa-42cc-ba4b-13b9ea611e2f\"
+           },
+           {
+               \"target_display_name\": \"DNS-UDP\",
+               \"is_valid\": true,
+               \"target_type\": \"NSService\",
+               \"target_id\": \"3f8e4809-6170-4b25-94fa-6f18019d86a8\"
+           },
+           {
+              \"target_display_name\": \"HTTPS\",
+              \"is_valid\": true,
+              \"target_type\": \"NSService\",
+              \"target_id\": \"3705b545-81b8-4c0f-b77a-fec77f6bf134\"
+           }
+        ],
+       \"ip_protocol\": \"IPV4_IPV6\",
+       \"logged\": true,
+       \"action\": \"ALLOW\",
+       \"disabled\": false,
+       \"direction\": \"IN_OUT\"
+      }"
+      force_basic_auth: yes
+      validate_certs: no
+      status_code: 200
+
+- name: CONFIGURE LOAD BALANCER
+  hosts: nsx-manager
+  gather_facts: no
+  vars_files:
+    - vars_file.yml
+  tasks:
+  - name: Create active health monitor for 3-tier app
+    uri:
+      url: https://{{nsx_manager_ip}}/api/v1/loadbalancer/monitors
+      method: POST
+      user: admin
+      password: "{{ nsx_admin_pwd }}"
+      headers:
+        Content-Type: "application/json"
+      body_format: json
+      body: "{
+        \"request_method\": \"GET\",
+        \"response_status_codes\":[200],
+        \"request_version\": \"HTTP_VERSION_1_1\",
+        \"request_url\": \"{{ threetierapp_http_monitor_url }}\",
+        \"monitor_port\": \"{{ threetierapp_http_monitor_port }}\",
+        \"fall_count\": 3,
+        \"interval\": 5,
+        \"rise_count\": 3,
+        \"timeout\": 15,
+        \"resource_type\": \"LbHttpMonitor\",
+        \"display_name\": \"{{ threetierapp_http_monitor_name }}\",
+        \"description\": \"{{ threetierapp_http_monitor_description }}\"
+      }"
+      force_basic_auth: yes
+      validate_certs: no
+      status_code: 200
+    register: output
+  - set_fact:
+      threetierapp_monitor_id: "{{ output.json.id }}"
+
+  - name: Create web servers pool
+    uri:
+      url: https://{{nsx_manager_ip}}/api/v1/loadbalancer/pools
+      method: POST
+      user: admin
+      password: "{{ nsx_admin_pwd }}"
+      headers:
+        Content-Type: "application/json"
+      body_format: json
+      body: "{
+        \"algorithm\": \"ROUND_ROBIN\",
+        \"member_group\": {
+         \"grouping_object\": {
+           \"is_valid\": true,
+           \"target_type\": \"NSGroup\",
+           \"target_id\":  \"{{ hostvars['nsx-manager']['web_nsgroup_id'] }}\"
+          },
+         \"ip_revision_filter\": \"IPV4\",
+         \"max_ip_list_size\": 3
+         },
+        \"tcp_multiplexing_number\": 6,
+        \"tcp_multiplexing_enabled\": \"false\",
+        \"min_active_members\": 1,
+        \"active_monitor_ids\": [\"{{ hostvars['nsx-manager']['threetierapp_monitor_id'] }}\"],
+        \"display_name\": \"{{ web_servers_pool_name }}\",
+        \"description\": \"{{ web_servers_pool_description }}\"
+       }"
+      force_basic_auth: yes
+      validate_certs: no
+      status_code: 200
+    register: output
+  - set_fact:
+      web_servers_pool_id: "{{ output.json.id }}"
+
+  - name: Create web virtual server
+    uri:
+      url: https://{{nsx_manager_ip}}/api/v1/loadbalancer/virtual-servers
+      method: POST
+      user: admin
+      password: "{{ nsx_admin_pwd }}"
+      headers:
+        Content-Type: "application/json"
+      body_format: json
+      body: "{
+        \"ip_protocol\": \"TCP\",
+        \"enabled\": \"true\",
+        \"pool_id\": \"{{ hostvars['nsx-manager']['web_servers_pool_id'] }}\",
+        \"application_profile_id\": \"6f99b4d7-8b85-53db-956a-4b5255daf032\",
+        \"default_pool_member_port\" : \"80\",
+        \"ip_address\": \"{{ web_servers_vip_ip }}\",
+        \"ports\": [
+                       \"80\",
+                       \"443\"
+         ],
+        \"default_pool_member_ports\": [
+                       \"80\",
+                       \"443\"
+         ],
+        \"display_name\": \"{{ web_servers_vip_name }}\",
+        \"description\": \"{{ web_servers_vip_description }}\"
+      }"
+      force_basic_auth: yes
+      validate_certs: no
+      status_code: 200
+    register: output
+  - set_fact:
+      web_servers_vip_id: "{{ output.json.id }}"
+
+  - name: Create LB and attach virtual server
+    uri:
+      url: https://{{nsx_manager_ip}}/api/v1/loadbalancer/services
+      method: POST
+      user: admin
+      password: "{{ nsx_admin_pwd }}"
+      headers:
+        Content-Type: "application/json"
+      body_format: json
+      body: "{
+        \"resource_type\" : \"LbService\",
+        \"display_name\" : \"{{ lb_name }}\",
+        \"size\" : \"SMALL\",
+        \"attachment\" : {
+          \"target_id\":  \"{{ hostvars['nsx-manager']['tier1_id'] }}\"
+        },
+        \"virtual_server_ids\" : [ \"{{ hostvars['nsx-manager']['web_servers_vip_id'] }}\" ],
+        \"enabled\" : true
+      }"
+      force_basic_auth: yes
+      validate_certs: no
+      status_code: 200
+
+- name: CONFIGURE NSX-MANAGER BACKUP SERVER
+  hosts: kvm-01
+  gather_facts: no
+  vars_files:
+  - vars_file.yml
+  tasks:
+  - name: Check if backup folder exists
+    stat:
+      path: "{{ backup_folder }}"
+    register: backup_folder_stat
+
+  - name: Remove old backup folder if exists
+    become: yes
+    file:
+      state: absent
+      path: "{{ backup_folder }}"
+    when: backup_folder_stat.stat.exists == True
+
+  - name: Create new backup folder and set permissions
+    become: yes
+    shell: mkdir {{ backup_folder }} && chmod 777 {{ backup_folder }}
+
+  - name: Get server SSH fingerprint
+    become: yes
+    shell: "awk '{print $2}' /etc/ssh/ssh_host_ecdsa_key.pub | base64 -d | sha256sum -b | sed 's/ .*$//' | xxd -r -p | base64 | sed 's/.//44g' | awk '{print \"SHA256:\"$1}'"
+    register: output
+  - set_fact:
+      backup_server_fingerprint: "{{ output.stdout }}"     
+
+  - name: Configure cron task for cleaning old backups
+    become: yes
+    lineinfile:
+      path: "/var/spool/cron/crontabs/root"
+# Adds the line below if it does not exist. Otherwise, does nothing
+      line: "1 2 * * * find '{{ backup_folder }}' -mtime +6 -type f -delete"
+
+- name: CONFIGURE AND ENABLE NSX-MANAGER BACKUP
+  hosts: nsx-manager
+  gather_facts: no
+  vars_files:
+  - vars_file.yml
+  tasks:
+   - uri:
+       url: https://{{nsx_manager_ip}}/api/v1/cluster/backups/config
+       method: PUT
+       user: admin
+       password: "{{ nsx_admin_pwd }}"
+       headers:
+         Content-Type: "application/json"
+       body_format: json
+       body: "{
+         \"remote_file_server\": {
+         \"server\": \"{{ kvm01_ip }}\",
+         \"protocol\": {
+             \"authentication_scheme\": {
+                 \"scheme_name\": \"PASSWORD\",
+                 \"username\": \"{{ kvm_username }}\",
+                 \"password\": \"{{ kvm_pwd }}\"
+                 },
+             \"ssh_fingerprint\": \"{{ hostvars['kvm-01']['backup_server_fingerprint'] }}\",
+             \"protocol_name\": \"sftp\"
+             },
+         \"port\": 22,
+         \"directory_path\": \"{{ backup_folder }}\"
+         },
+         \"backup_enabled\": true,
+         \"backup_schedule\": {
+             \"resource_type\": \"IntervalBackupSchedule\",
+             \"seconds_between_backups\": 3600
+             },
+         \"passphrase\":\"{{ backup_passphrase }}\",
+         \"inventory_summary_interval\": 300
+       }"
+       force_basic_auth: yes
+       validate_certs: no
+       status_code: 200
+
+- name: ACCEPT NSX MANAGER EULA
+  hosts: managers
+  gather_facts: no
+  vars_files:
+    - vars_file.yml
+  tasks:
+  - name: Accept EULA
+    uri:
+      url: https://{{nsx_manager_ip}}/api/v1/eula/accept
+      method: POST
+      user: admin
+      password: "{{ nsx_admin_pwd }}"
+      headers:
+        Content-Type: "application/json"
+      body_format: json
+      force_basic_auth: yes
+      validate_certs: no
+      status_code: 200
+
+- name: ACCEPT CEIP
+  hosts: managers
+  gather_facts: no
+  vars_files:
+    - vars_file.yml
+  tasks:
+  - name: Get telemetry revision number
+    uri:
+      url: https://{{nsx_manager_ip}}/api/v1/telemetry/config
+      method: GET
+      user: admin
+      password: "{{ nsx_admin_pwd }}"
+      headers:
+        Content-Type: "application/json"
+      force_basic_auth: yes
+      validate_certs: no
+      status_code: 200
+    register: output
+  - set_fact:
+     telemetry_revision: " {{ output.json._revision }}"
+
+  - name: Set CEIP acceptance value
+    uri:
+      url: https://{{nsx_manager_ip}}/api/v1/telemetry/config
+      method: PUT
+      user: admin
+      password: "{{ nsx_admin_pwd }}"
+      headers:
+        Content-Type: "application/json"
+      body_format: json
+      body: "{
+        \"ceip_acceptance\": false,
+        \"schedule_enabled\": false,
+        \"proxy_enabled\": false,
+        \"_revision\": \"{{ telemetry_revision }}\"
+      }"
+      force_basic_auth: yes
+      validate_certs: no
+      status_code: 200
+
