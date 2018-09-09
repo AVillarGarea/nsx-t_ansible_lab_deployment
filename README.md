@@ -44,7 +44,8 @@ I've tested the playbook with NSX-T 2.2.0. I'm not planning any update, neither 
  - Configured scheduled backups
  - Accepts NSX Manager EULA and CEIP
 
-# The playbook runs some additional tasks, which are required in my lab because I try early versions that are not fully baked and sometimes miss some install/uninstall code. In a production environment these should not be required:
+# The playbook runs some additional tasks
+Required in my lab because I try early versions that are not fully baked and sometimes miss some install/uninstall code. In a production environment these should not be required:
  - Remove known SSH hosts from the VM where I'm running the Ansible playbook
  - Remove VIBs and reboot ESXi hosts
  - Remove NSX packages and reboot KVM nodes
