@@ -1,5 +1,8 @@
 # nsx-t_ansible_lab_deployment
 
+# Intro
+The process I followed to get to this playbook is explained on the following Wordpress blog https://avillargarea.wordpress.com/2018/09/10/my-experience-with-nsx-and-ansible/
+
 # Be aware that 
 On "deploy-nsx-v2.2.yml" you need to replace line 127 with the URL of your own repo. This is how it looks like in my playbook: "url: https://YOUR_REPO/nsx-lcp-{{ ubuntu_lcp_build }}-ubuntu-xenial_amd64.tar.gz"
 
